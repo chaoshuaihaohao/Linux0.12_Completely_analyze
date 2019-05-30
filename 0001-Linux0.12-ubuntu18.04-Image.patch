@@ -1,0 +1,2224 @@
+From 1119700a61e82b62b0cd1aeb8f9d9607b39f558f Mon Sep 17 00:00:00 2001
+From: Chen Hao <chenhao199408@163.com>
+Date: Thu, 30 May 2019 21:28:40 +0800
+Subject: [PATCH] =?UTF-8?q?=E8=BF=99=E6=98=AF=E7=BB=8F=E8=BF=87=E4=BF=AE?=
+ =?UTF-8?q?=E6=94=B9Linux0.12=E5=8E=9F=E5=A7=8B=E7=89=88=E6=9C=AC=E7=9A=84?=
+ =?UTF-8?q?=E5=90=84=E4=B8=AA=E6=96=87=E4=BB=B6=E5=90=8E=EF=BC=8C=E5=8F=AF?=
+ =?UTF-8?q?=E4=BB=A5=E5=9C=A8ubuntu18.04=E8=99=9A=E6=8B=9F=E6=9C=BA?=
+ =?UTF-8?q?=E4=B8=8A=E6=88=90=E5=8A=9F=E7=BC=96=E8=AF=91=E7=9A=84=E7=89=88?=
+ =?UTF-8?q?=E6=9C=AC=E3=80=82=E8=AF=A5=E7=89=88=E6=9C=AC=E6=88=90=E5=8A=9F?=
+ =?UTF-8?q?=E7=94=9F=E6=88=90=E4=BA=86Image=E7=AD=89=E6=96=87=E4=BB=B6?=
+ =?UTF-8?q?=E3=80=82?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This is the version that was successfully compiled on the ubuntu18.04 virtual machine
+after modifying the various files in the original version of Linux0.12.
+This version successfully generates files such as Image.
+
+Signed-off-by: Chen Hao <chenhao199408@163.com>
+---
+ Makefile                  |  37 ++++++--
+ README.md                 |   3 +
+ boot/head.s               |  45 ++++-----
+ fs/Makefile               |  10 +-
+ fs/bitmap.c               |   4 +-
+ fs/buffer.c               |   2 +-
+ fs/exec.c                 |   5 +-
+ fs/file_dev.c             |   2 +
+ fs/namei.c                |   2 +-
+ include/asm/memory.h      |   2 +-
+ include/asm/segment.h     |  21 +++--
+ include/linux/mm.h        |   2 +-
+ include/linux/sched.h     |  10 +-
+ include/string.h          |  82 ++++++++---------
+ init/main.c               |  20 ++--
+ init/main.s               | 186 +++++++++++++++++++-------------------
+ kernel/Makefile           |  10 +-
+ kernel/asm.s              |  76 ++++++++--------
+ kernel/blk_drv/Makefile   |  10 +-
+ kernel/blk_drv/blk.h      |   4 +-
+ kernel/blk_drv/floppy.c   |   2 +-
+ kernel/blk_drv/hd.c       |   4 +-
+ kernel/chr_drv/Makefile   |  10 +-
+ kernel/chr_drv/console.c  |  30 +++---
+ kernel/chr_drv/keyboard.S |  18 ++--
+ kernel/chr_drv/rs_io.s    |  14 +--
+ kernel/chr_drv/tty_io.c   |   2 +-
+ kernel/math/Makefile      |  10 +-
+ kernel/math/get_put.c     |   4 +
+ kernel/sys_call.s         |  64 ++++++-------
+ lib/Makefile              |  10 +-
+ lib/malloc.c              |   4 +-
+ mm/Makefile               |  10 +-
+ mm/memory.c               |   2 +-
+ mm/page.s                 |   8 +-
+ mm/swap.c                 |   2 +-
+ tools/build.c             |   7 +-
+ 37 files changed, 383 insertions(+), 351 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 1cb2861..982ed73 100755
+--- a/Makefile
++++ b/Makefile
+@@ -7,12 +7,12 @@ RAMDISK = #-DRAMDISK=512
+ AS86	=as86 -0 -a
+ LD86	=ld86 -0
+ 
+-AS	=gas
+-LD	=gld
+-LDFLAGS	=-s -x -M
++AS	=as --32
++LD	=ld
++LDFLAGS	=-s -x -M  -m elf_i386 -Ttext 0 -e startup_32
+ CC	=gcc $(RAMDISK)
+ CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
+--fcombine-regs -mstring-insns
++-m32 -fno-stack-protector
+ CPP	=cpp -nostdinc -Iinclude
+ 
+ #
+@@ -20,8 +20,9 @@ CPP	=cpp -nostdinc -Iinclude
+ # This can be either FLOPPY, /dev/xxxx or empty, in which case the
+ # default of /dev/hd6 is used by 'build'.
+ #
+-ROOT_DEV=/dev/hd6
+-SWAP_DEV=/dev/hd2
++ROOT_DEV=FLOPPY
++#SWAP_DEV=/dev/hd2
++SWAP_DEV=
+ 
+ ARCHIVES=kernel/kernel.o mm/mm.o fs/fs.o
+ DRIVERS =kernel/blk_drv/blk_drv.a kernel/chr_drv/chr_drv.a
+@@ -39,9 +40,15 @@ LIBS	=lib/lib.a
+ 
+ all:	Image
+ 
++#Image: boot/bootsect boot/setup tools/system tools/build
++#	tools/build boot/bootsect boot/setup tools/system $(ROOT_DEV) \
++#		$(SWAP_DEV) > Image
++#	sync
++
+ Image: boot/bootsect boot/setup tools/system tools/build
+-	tools/build boot/bootsect boot/setup tools/system $(ROOT_DEV) \
+-		$(SWAP_DEV) > Image
++	objcopy -O binary -R .note -R .comment tools/system tools/kernel
++	tools/build boot/bootsect boot/setup tools/kernel $(ROOT_DEV) > Image
++	rm tools/kernel -f
+ 	sync
+ 
+ disk: Image
+@@ -53,14 +60,24 @@ tools/build: tools/build.c
+ 
+ boot/head.o: boot/head.s
+ 
+-tools/system:	boot/head.o init/main.o \
++#tools/system:	boot/head.o init/main.o \
++#		$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS)
++#	$(LD) $(LDFLAGS) boot/head.o init/main.o \
++#	$(ARCHIVES) \
++#	$(DRIVERS) \
++#	$(MATH) \
++#	$(LIBS) \
++#	-o tools/system > System.map
++
++tools/system: boot/head.o init/main.o \
+ 		$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS)
+ 	$(LD) $(LDFLAGS) boot/head.o init/main.o \
+ 	$(ARCHIVES) \
+ 	$(DRIVERS) \
+ 	$(MATH) \
+ 	$(LIBS) \
+-	-o tools/system > System.map
++	-o tools/system
++	nm tools/system | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
+ 
+ kernel/math/math.a:
+ 	(cd kernel/math; make)
+diff --git a/README.md b/README.md
+index d461d14..965c3f5 100644
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,9 @@
+ # Linux0.12_Completely_analyze
+ LINUX内核完全剖析：基于0.12内核------研究记录
+ 
++Tag v0.0.1
++这是经过修改Linux0.12原始版本的各个文件后，可以在ubuntu18.04虚拟机上成功编译的版本。该版本成功生成了Image等文件。
++
+ Tag v0.0.0
+ 这是Linux0.12源代码的原始版本。我上传这个最初版用作一个对比版本，这样我在之后上传的代码可以方便的和原始版本进行比较，以便于查看我做了哪些修改。
+ 
+diff --git a/boot/head.s b/boot/head.s
+index de56a74..92c14a3 100755
+--- a/boot/head.s
++++ b/boot/head.s
+@@ -12,15 +12,16 @@
+  * the page directory.
+  */
+ .text
+-.globl _idt,_gdt,_pg_dir,_tmp_floppy_area
+-_pg_dir:
++.globl idt,gdt,pg_dir,tmp_floppy_area
++pg_dir:
++.globl startup_32
+ startup_32:
+ 	movl $0x10,%eax
+ 	mov %ax,%ds
+ 	mov %ax,%es
+ 	mov %ax,%fs
+ 	mov %ax,%gs
+-	lss _stack_start,%esp
++	lss stack_start,%esp
+ 	call setup_idt
+ 	call setup_gdt
+ 	movl $0x10,%eax		# reload all the segment registers
+@@ -28,7 +29,7 @@ startup_32:
+ 	mov %ax,%es		# reloaded in 'setup_gdt'
+ 	mov %ax,%fs
+ 	mov %ax,%gs
+-	lss _stack_start,%esp
++	lss stack_start,%esp
+ 	xorl %eax,%eax
+ 1:	incl %eax		# check that A20 really IS enabled
+ 	movl %eax,0x000000	# loop forever if it isn't
+@@ -60,7 +61,7 @@ check_x87:
+ 	xorl $6,%eax		/* reset MP, set EM */
+ 	movl %eax,%cr0
+ 	ret
+-.align 2
++.align 4
+ 1:	.byte 0xDB,0xE4		/* fsetpm for 287, ignored by 387 */
+ 	ret
+ 
+@@ -81,7 +82,7 @@ setup_idt:
+ 	movw %dx,%ax		/* selector = 0x0008 = cs */
+ 	movw $0x8E00,%dx	/* interrupt gate - dpl=0, present */
+ 
+-	lea _idt,%edi
++	lea idt,%edi
+ 	mov $256,%ecx
+ rp_sidt:
+ 	movl %eax,(%edi)
+@@ -129,7 +130,7 @@ pg3:
+  * reach to a buffer-block. It needs to be aligned, so that it isn't
+  * on a 64kB border.
+  */
+-_tmp_floppy_area:
++tmp_floppy_area:
+ 	.fill 1024,1,0
+ 
+ after_page_tables:
+@@ -137,7 +138,7 @@ after_page_tables:
+ 	pushl $0
+ 	pushl $0
+ 	pushl $L6		# return address for main, if it decides to.
+-	pushl $_main
++	pushl $main
+ 	jmp setup_paging
+ L6:
+ 	jmp L6			# main should never return here, but
+@@ -146,7 +147,7 @@ L6:
+ /* This is the default interrupt "handler" :-) */
+ int_msg:
+ 	.asciz "Unknown interrupt\n\r"
+-.align 2
++.align 4
+ ignore_int:
+ 	pushl %eax
+ 	pushl %ecx
+@@ -159,7 +160,7 @@ ignore_int:
+ 	mov %ax,%es
+ 	mov %ax,%fs
+ 	pushl $int_msg
+-	call _printk
++	call printk
+ 	popl %eax
+ 	pop %fs
+ 	pop %es
+@@ -194,16 +195,16 @@ ignore_int:
+  * some kind of marker at them (search for "16Mb"), but I
+  * won't guarantee that's all :-( )
+  */
+-.align 2
++.align 4
+ setup_paging:
+ 	movl $1024*5,%ecx		/* 5 pages - pg_dir+4 page tables */
+ 	xorl %eax,%eax
+ 	xorl %edi,%edi			/* pg_dir is at 0x000 */
+ 	cld;rep;stosl
+-	movl $pg0+7,_pg_dir		/* set present bit/user r/w */
+-	movl $pg1+7,_pg_dir+4		/*  --------- " " --------- */
+-	movl $pg2+7,_pg_dir+8		/*  --------- " " --------- */
+-	movl $pg3+7,_pg_dir+12		/*  --------- " " --------- */
++	movl $pg0+7,pg_dir		/* set present bit/user r/w */
++	movl $pg1+7,pg_dir+4		/*  --------- " " --------- */
++	movl $pg2+7,pg_dir+8		/*  --------- " " --------- */
++	movl $pg3+7,pg_dir+12		/*  --------- " " --------- */
+ 	movl $pg3+4092,%edi
+ 	movl $0xfff007,%eax		/*  16Mb - 4096 + 7 (r/w user,p) */
+ 	std
+@@ -217,21 +218,21 @@ setup_paging:
+ 	movl %eax,%cr0		/* set paging (PG) bit */
+ 	ret			/* this also flushes prefetch-queue */
+ 
+-.align 2
++.align 4
+ .word 0
+ idt_descr:
+ 	.word 256*8-1		# idt contains 256 entries
+-	.long _idt
+-.align 2
++	.long idt
++.align 4
+ .word 0
+ gdt_descr:
+ 	.word 256*8-1		# so does gdt (not that that's any
+-	.long _gdt		# magic number, but it works for me :^)
++	.long gdt		# magic number, but it works for me :^)
+ 
+-	.align 3
+-_idt:	.fill 256,8,0		# idt is uninitialized
++	.align 8
++idt:	.fill 256,8,0		# idt is uninitialized
+ 
+-_gdt:	.quad 0x0000000000000000	/* NULL descriptor */
++gdt:	.quad 0x0000000000000000	/* NULL descriptor */
+ 	.quad 0x00c09a0000000fff	/* 16Mb */
+ 	.quad 0x00c0920000000fff	/* 16Mb */
+ 	.quad 0x0000000000000000	/* TEMPORARY - don't use */
+diff --git a/fs/Makefile b/fs/Makefile
+index 96d8de1..2eee56d 100755
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -1,9 +1,9 @@
+-AR	=gar
+-AS	=gas
++AR	=ar
++AS	=as --32
+ CC	=gcc
+-LD	=gld
+-CFLAGS	=-Wall -O -fstrength-reduce -fcombine-regs -fomit-frame-pointer \
+-	-fno-defer-pop -mstring-insns -nostdinc -I../include
++LD	=ld -m elf_i386
++CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
++	-fno-defer-pop -I../include -m32 -fno-stack-protector
+ CPP	=gcc -E -nostdinc -I../include
+ 
+ .c.s:
+diff --git a/fs/bitmap.c b/fs/bitmap.c
+index ec733d0..628beff 100755
+--- a/fs/bitmap.c
++++ b/fs/bitmap.c
+@@ -14,7 +14,7 @@
+ __asm__("cld\n\t" \
+ 	"rep\n\t" \
+ 	"stosl" \
+-	::"a" (0),"c" (BLOCK_SIZE/4),"D" ((long) (addr)):"cx","di")
++	::"a" (0),"c" (BLOCK_SIZE/4),"D" ((long) (addr)):)
+ 
+ #define set_bit(nr,addr) ({\
+ register int res __asm__("ax"); \
+@@ -41,7 +41,7 @@ __asm__("cld\n" \
+ 	"cmpl $8192,%%ecx\n\t" \
+ 	"jl 1b\n" \
+ 	"3:" \
+-	:"=c" (__res):"c" (0),"S" (addr):"ax","dx","si"); \
++	:"=c" (__res):"c" (0),"S" (addr):); \
+ __res;})
+ 
+ int free_block(int dev, int block)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index f0f3fb3..4924105 100755
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -285,7 +285,7 @@ __asm__("cld\n\t" \
+ 	"rep\n\t" \
+ 	"movsl\n\t" \
+ 	::"c" (BLOCK_SIZE/4),"S" (from),"D" (to) \
+-	:"cx","di","si")
++	:)
+ 
+ /*
+  * bread_page reads four buffers into memory at the desired address. It's
+diff --git a/fs/exec.c b/fs/exec.c
+index d5136f2..f5af72c 100755
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -158,9 +158,8 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
+ 				offset = p % PAGE_SIZE;
+ 				if (from_kmem==2)
+ 					set_fs(old_fs);
+-				if (!(pag = (char *) page[p/PAGE_SIZE]) &&
+-				    !(pag = (char *) page[p/PAGE_SIZE] =
+-				      (unsigned long *) get_free_page())) 
++				pag = (char *) page[p/PAGE_SIZE];
++				if (!pag && !(pag = (unsigned long *) get_free_page()))
+ 					return 0;
+ 				if (from_kmem==2)
+ 					set_fs(new_fs);
+diff --git a/fs/file_dev.c b/fs/file_dev.c
+index 0c50eaa..f719d91 100755
+--- a/fs/file_dev.c
++++ b/fs/file_dev.c
+@@ -16,6 +16,7 @@
+ 
+ int file_read(struct m_inode * inode, struct file * filp, char * buf, int count)
+ {
++#if 0
+ 	int left,chars,nr;
+ 	struct buffer_head * bh;
+ 
+@@ -43,6 +44,7 @@ int file_read(struct m_inode * inode, struct file * filp, char * buf, int count)
+ 	}
+ 	inode->i_atime = CURRENT_TIME;
+ 	return (count-left)?(count-left):-ERROR;
++#endif
+ }
+ 
+ int file_write(struct m_inode * inode, struct file * filp, char * buf, int count)
+diff --git a/fs/namei.c b/fs/namei.c
+index 8b99d70..596e866 100755
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -79,7 +79,7 @@ static int match(int len,const char * name,struct dir_entry * de)
+ 		"setz %%al"
+ 		:"=a" (same)
+ 		:"0" (0),"S" ((long) name),"D" ((long) de->name),"c" (len)
+-		:"cx","di","si");
++		:);
+ 	return same;
+ }
+ 
+diff --git a/include/asm/memory.h b/include/asm/memory.h
+index 4b0a98e..e5a5e3b 100755
+--- a/include/asm/memory.h
++++ b/include/asm/memory.h
+@@ -9,6 +9,6 @@
+ void * _res = dest; \
+ __asm__ ("cld;rep;movsb" \
+ 	::"D" ((long)(_res)),"S" ((long)(src)),"c" ((long) (n)) \
+-	:"di","si","cx"); \
++	:); \
+ _res; \
+ })
+diff --git a/include/asm/segment.h b/include/asm/segment.h
+index c03657f..77d223c 100755
+--- a/include/asm/segment.h
++++ b/include/asm/segment.h
+@@ -1,12 +1,13 @@
+-extern inline unsigned char get_fs_byte(const char * addr)
++static inline unsigned char get_fs_byte(const char * addr)
+ {
+-	unsigned register char _v;
++//	unsigned register char _v;
++	unsigned short _v;
+ 
+ 	__asm__ ("movb %%fs:%1,%0":"=r" (_v):"m" (*addr));
+ 	return _v;
+ }
+ 
+-extern inline unsigned short get_fs_word(const unsigned short *addr)
++static inline unsigned short get_fs_word(const unsigned short *addr)
+ {
+ 	unsigned short _v;
+ 
+@@ -14,7 +15,7 @@ extern inline unsigned short get_fs_word(const unsigned short *addr)
+ 	return _v;
+ }
+ 
+-extern inline unsigned long get_fs_long(const unsigned long *addr)
++static inline unsigned long get_fs_long(const unsigned long *addr)
+ {
+ 	unsigned long _v;
+ 
+@@ -22,17 +23,17 @@ extern inline unsigned long get_fs_long(const unsigned long *addr)
+ 	return _v;
+ }
+ 
+-extern inline void put_fs_byte(char val,char *addr)
++static inline void put_fs_byte(char val,char *addr)
+ {
+ __asm__ ("movb %0,%%fs:%1"::"r" (val),"m" (*addr));
+ }
+ 
+-extern inline void put_fs_word(short val,short * addr)
++static inline void put_fs_word(short val,short * addr)
+ {
+ __asm__ ("movw %0,%%fs:%1"::"r" (val),"m" (*addr));
+ }
+ 
+-extern inline void put_fs_long(unsigned long val,unsigned long * addr)
++static inline void put_fs_long(unsigned long val,unsigned long * addr)
+ {
+ __asm__ ("movl %0,%%fs:%1"::"r" (val),"m" (*addr));
+ }
+@@ -44,21 +45,21 @@ __asm__ ("movl %0,%%fs:%1"::"r" (val),"m" (*addr));
+  * [ nothing wrong here, Linus ]
+  */
+ 
+-extern inline unsigned long get_fs() 
++static inline unsigned long get_fs()
+ {
+ 	unsigned short _v;
+ 	__asm__("mov %%fs,%%ax":"=a" (_v):);
+ 	return _v;
+ }
+ 
+-extern inline unsigned long get_ds() 
++static inline unsigned long get_ds()
+ {
+ 	unsigned short _v;
+ 	__asm__("mov %%ds,%%ax":"=a" (_v):);
+ 	return _v;
+ }
+ 
+-extern inline void set_fs(unsigned long val)
++static inline void set_fs(unsigned long val)
+ {
+ 	__asm__("mov %0,%%fs"::"a" ((unsigned short) val));
+ }
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 94c3713..052e764 100755
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -17,7 +17,7 @@ extern void free_page(unsigned long addr);
+ void swap_free(int page_nr);
+ void swap_in(unsigned long *table_ptr);
+ 
+-extern inline volatile void oom(void)
++static inline volatile void oom(void)
+ {
+ 	printk("out of memory\n\r");
+ 	do_exit(SIGSEGV);
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 8f1ef9b..5160009 100755
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -221,12 +221,12 @@ __asm__("str %%ax\n\t" \
+  */
+ #define switch_to(n) {\
+ struct {long a,b;} __tmp; \
+-__asm__("cmpl %%ecx,_current\n\t" \
++__asm__("cmpl %%ecx,current\n\t" \
+ 	"je 1f\n\t" \
+ 	"movw %%dx,%1\n\t" \
+-	"xchgl %%ecx,_current\n\t" \
++	"xchgl %%ecx,current\n\t" \
+ 	"ljmp %0\n\t" \
+-	"cmpl %%ecx,_last_task_used_math\n\t" \
++	"cmpl %%ecx,last_task_used_math\n\t" \
+ 	"jne 1f\n\t" \
+ 	"clts\n" \
+ 	"1:" \
+@@ -245,7 +245,7 @@ __asm__("movw %%dx,%0\n\t" \
+ 	  "m" (*((addr)+4)), \
+ 	  "m" (*((addr)+7)), \
+ 	  "d" (base) \
+-	:"dx")
++	:)
+ 
+ #define _set_limit(addr,limit) \
+ __asm__("movw %%dx,%0\n\t" \
+@@ -257,7 +257,7 @@ __asm__("movw %%dx,%0\n\t" \
+ 	::"m" (*(addr)), \
+ 	  "m" (*((addr)+6)), \
+ 	  "d" (limit) \
+-	:"dx")
++	:)
+ 
+ #define set_base(ldt,base) _set_base( ((char *)&(ldt)) , base )
+ #define set_limit(ldt,limit) _set_limit( ((char *)&(ldt)) , (limit-1)>>12 )
+diff --git a/include/string.h b/include/string.h
+index 05a6d9c..32652d0 100755
+--- a/include/string.h
++++ b/include/string.h
+@@ -10,7 +10,7 @@
+ typedef unsigned int size_t;
+ #endif
+ 
+-extern char * strerror(int errno);
++static char * strerror(int errno);
+ 
+ /*
+  * This string-include defines all string functions as inline
+@@ -24,18 +24,18 @@ extern char * strerror(int errno);
+  *		(C) 1991 Linus Torvalds
+  */
+  
+-extern inline char * strcpy(char * dest,const char *src)
++static inline char * strcpy(char * dest,const char *src)
+ {
+ __asm__("cld\n"
+ 	"1:\tlodsb\n\t"
+ 	"stosb\n\t"
+ 	"testb %%al,%%al\n\t"
+ 	"jne 1b"
+-	::"S" (src),"D" (dest):"si","di","ax");
++	::"S" (src),"D" (dest):);
+ return dest;
+ }
+ 
+-extern inline char * strncpy(char * dest,const char *src,int count)
++static inline char * strncpy(char * dest,const char *src,int count)
+ {
+ __asm__("cld\n"
+ 	"1:\tdecl %2\n\t"
+@@ -47,11 +47,11 @@ __asm__("cld\n"
+ 	"rep\n\t"
+ 	"stosb\n"
+ 	"2:"
+-	::"S" (src),"D" (dest),"c" (count):"si","di","ax","cx");
++	::"S" (src),"D" (dest),"c" (count):);
+ return dest;
+ }
+ 
+-extern inline char * strcat(char * dest,const char * src)
++static inline char * strcat(char * dest,const char * src)
+ {
+ __asm__("cld\n\t"
+ 	"repne\n\t"
+@@ -61,11 +61,11 @@ __asm__("cld\n\t"
+ 	"stosb\n\t"
+ 	"testb %%al,%%al\n\t"
+ 	"jne 1b"
+-	::"S" (src),"D" (dest),"a" (0),"c" (0xffffffff):"si","di","ax","cx");
++	::"S" (src),"D" (dest),"a" (0),"c" (0xffffffff):);
+ return dest;
+ }
+ 
+-extern inline char * strncat(char * dest,const char * src,int count)
++static inline char * strncat(char * dest,const char * src,int count)
+ {
+ __asm__("cld\n\t"
+ 	"repne\n\t"
+@@ -81,11 +81,11 @@ __asm__("cld\n\t"
+ 	"2:\txorl %2,%2\n\t"
+ 	"stosb"
+ 	::"S" (src),"D" (dest),"a" (0),"c" (0xffffffff),"g" (count)
+-	:"si","di","ax","cx");
++	:);
+ return dest;
+ }
+ 
+-extern inline int strcmp(const char * cs,const char * ct)
++static inline int strcmp(const char * cs,const char * ct)
+ {
+ register int __res __asm__("ax");
+ __asm__("cld\n"
+@@ -100,11 +100,11 @@ __asm__("cld\n"
+ 	"jl 3f\n\t"
+ 	"negl %%eax\n"
+ 	"3:"
+-	:"=a" (__res):"D" (cs),"S" (ct):"si","di");
++	:"=a" (__res):"D" (cs),"S" (ct):);
+ return __res;
+ }
+ 
+-extern inline int strncmp(const char * cs,const char * ct,int count)
++static inline int strncmp(const char * cs,const char * ct,int count)
+ {
+ register int __res __asm__("ax");
+ __asm__("cld\n"
+@@ -121,11 +121,11 @@ __asm__("cld\n"
+ 	"jl 4f\n\t"
+ 	"negl %%eax\n"
+ 	"4:"
+-	:"=a" (__res):"D" (cs),"S" (ct),"c" (count):"si","di","cx");
++	:"=a" (__res):"D" (cs),"S" (ct),"c" (count):);
+ return __res;
+ }
+ 
+-extern inline char * strchr(const char * s,char c)
++static inline char * strchr(const char * s,char c)
+ {
+ register char * __res __asm__("ax");
+ __asm__("cld\n\t"
+@@ -138,11 +138,11 @@ __asm__("cld\n\t"
+ 	"movl $1,%1\n"
+ 	"2:\tmovl %1,%0\n\t"
+ 	"decl %0"
+-	:"=a" (__res):"S" (s),"0" (c):"si");
++	:"=a" (__res):"S" (s),"0" (c):);
+ return __res;
+ }
+ 
+-extern inline char * strrchr(const char * s,char c)
++static inline char * strrchr(const char * s,char c)
+ {
+ register char * __res __asm__("dx");
+ __asm__("cld\n\t"
+@@ -154,11 +154,11 @@ __asm__("cld\n\t"
+ 	"decl %0\n"
+ 	"2:\ttestb %%al,%%al\n\t"
+ 	"jne 1b"
+-	:"=d" (__res):"0" (0),"S" (s),"a" (c):"ax","si");
++	:"=d" (__res):"0" (0),"S" (s),"a" (c):);
+ return __res;
+ }
+ 
+-extern inline int strspn(const char * cs, const char * ct)
++static inline int strspn(const char * cs, const char * ct)
+ {
+ register char * __res __asm__("si");
+ __asm__("cld\n\t"
+@@ -178,11 +178,11 @@ __asm__("cld\n\t"
+ 	"je 1b\n"
+ 	"2:\tdecl %0"
+ 	:"=S" (__res):"a" (0),"c" (0xffffffff),"0" (cs),"g" (ct)
+-	:"ax","cx","dx","di");
++	:);
+ return __res-cs;
+ }
+ 
+-extern inline int strcspn(const char * cs, const char * ct)
++static inline int strcspn(const char * cs, const char * ct)
+ {
+ register char * __res __asm__("si");
+ __asm__("cld\n\t"
+@@ -202,11 +202,11 @@ __asm__("cld\n\t"
+ 	"jne 1b\n"
+ 	"2:\tdecl %0"
+ 	:"=S" (__res):"a" (0),"c" (0xffffffff),"0" (cs),"g" (ct)
+-	:"ax","cx","dx","di");
++	:);
+ return __res-cs;
+ }
+ 
+-extern inline char * strpbrk(const char * cs,const char * ct)
++static inline char * strpbrk(const char * cs,const char * ct)
+ {
+ register char * __res __asm__("si");
+ __asm__("cld\n\t"
+@@ -229,11 +229,11 @@ __asm__("cld\n\t"
+ 	"2:\txorl %0,%0\n"
+ 	"3:"
+ 	:"=S" (__res):"a" (0),"c" (0xffffffff),"0" (cs),"g" (ct)
+-	:"ax","cx","dx","di");
++	:);
+ return __res;
+ }
+ 
+-extern inline char * strstr(const char * cs,const char * ct)
++static inline char * strstr(const char * cs,const char * ct)
+ {
+ register char * __res __asm__("ax");
+ __asm__("cld\n\t" \
+@@ -256,11 +256,11 @@ __asm__("cld\n\t" \
+ 	"xorl %%eax,%%eax\n\t"
+ 	"2:"
+ 	:"=a" (__res):"0" (0),"c" (0xffffffff),"S" (cs),"g" (ct)
+-	:"cx","dx","di","si");
++	:);
+ return __res;
+ }
+ 
+-extern inline int strlen(const char * s)
++static inline int strlen(const char * s)
+ {
+ register int __res __asm__("cx");
+ __asm__("cld\n\t"
+@@ -268,13 +268,13 @@ __asm__("cld\n\t"
+ 	"scasb\n\t"
+ 	"notl %0\n\t"
+ 	"decl %0"
+-	:"=c" (__res):"D" (s),"a" (0),"0" (0xffffffff):"di");
++	:"=c" (__res):"D" (s),"a" (0),"0" (0xffffffff):);
+ return __res;
+ }
+ 
+-extern char * ___strtok;
++static char * ___strtok;
+ 
+-extern inline char * strtok(char * s,const char * ct)
++static inline char * strtok(char * s,const char * ct)
+ {
+ register char * __res __asm__("si");
+ __asm__("testl %1,%1\n\t"
+@@ -329,38 +329,38 @@ __asm__("testl %1,%1\n\t"
+ 	"8:"
+ 	:"=b" (__res),"=S" (___strtok)
+ 	:"0" (___strtok),"1" (s),"g" (ct)
+-	:"ax","cx","dx","di");
++	:);
+ return __res;
+ }
+ 
+-extern inline void * memcpy(void * dest,const void * src, int n)
++static inline void * memcpy(void * dest,const void * src, int n)
+ {
+ __asm__("cld\n\t"
+ 	"rep\n\t"
+ 	"movsb"
+ 	::"c" (n),"S" (src),"D" (dest)
+-	:"cx","si","di");
++	:);
+ return dest;
+ }
+ 
+-extern inline void * memmove(void * dest,const void * src, int n)
++static inline void * memmove(void * dest,const void * src, int n)
+ {
+ if (dest<src)
+ __asm__("cld\n\t"
+ 	"rep\n\t"
+ 	"movsb"
+ 	::"c" (n),"S" (src),"D" (dest)
+-	:"cx","si","di");
++	:);
+ else
+ __asm__("std\n\t"
+ 	"rep\n\t"
+ 	"movsb"
+ 	::"c" (n),"S" (src+n-1),"D" (dest+n-1)
+-	:"cx","si","di");
++	:);
+ return dest;
+ }
+ 
+-extern inline int memcmp(const void * cs,const void * ct,int count)
++static inline int memcmp(const void * cs,const void * ct,int count)
+ {
+ register int __res __asm__("ax");
+ __asm__("cld\n\t"
+@@ -372,11 +372,11 @@ __asm__("cld\n\t"
+ 	"negl %%eax\n"
+ 	"1:"
+ 	:"=a" (__res):"0" (0),"D" (cs),"S" (ct),"c" (count)
+-	:"si","di","cx");
++	:);
+ return __res;
+ }
+ 
+-extern inline void * memchr(const void * cs,char c,int count)
++static inline void * memchr(const void * cs,char c,int count)
+ {
+ register void * __res __asm__("di");
+ if (!count)
+@@ -388,17 +388,17 @@ __asm__("cld\n\t"
+ 	"movl $1,%0\n"
+ 	"1:\tdecl %0"
+ 	:"=D" (__res):"a" (c),"D" (cs),"c" (count)
+-	:"cx");
++	:);
+ return __res;
+ }
+ 
+-extern inline void * memset(void * s,char c,int count)
++static inline void * memset(void * s,char c,int count)
+ {
+ __asm__("cld\n\t"
+ 	"rep\n\t"
+ 	"stosb"
+ 	::"a" (c),"D" (s),"c" (count)
+-	:"cx","di");
++	:);
+ return s;
+ }
+ 
+diff --git a/init/main.c b/init/main.c
+index 5fd2cdb..f60f9ae 100755
+--- a/init/main.c
++++ b/init/main.c
+@@ -20,10 +20,10 @@
+  * won't be any messing with the stack from main(), but we define
+  * some others too.
+  */
+-static inline _syscall0(int,fork)
+-static inline _syscall0(int,pause)
+-static inline _syscall1(int,setup,void *,BIOS)
+-static inline _syscall0(int,sync)
++/*static inline*/ _syscall0(int,fork)
++/*static inline*/ _syscall0(int,pause)
++/*static inline*/ _syscall1(int,setup,void *,BIOS)
++/*static inline*/ _syscall0(int,sync)
+ 
+ #include <linux/tty.h>
+ #include <linux/sched.h>
+@@ -173,10 +173,10 @@ void main(void)		/* This really IS void, no error here. */
+  * task can run, and if not we return here.
+  */
+ 	for(;;)
+-		__asm__("int $0x80"::"a" (__NR_pause):"ax");
++		__asm__("int $0x80"::"a" (__NR_pause):);
+ }
+ 
+-static int printf(const char *fmt, ...)
++static int printfw(const char *fmt, ...)
+ {
+ 	va_list args;
+ 	int i;
+@@ -195,9 +195,9 @@ void init(void)
+ 	(void) open("/dev/tty1",O_RDWR,0);
+ 	(void) dup(0);
+ 	(void) dup(0);
+-	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
++	printfw("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
+ 		NR_BUFFERS*BLOCK_SIZE);
+-	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
++	printfw("Free mem: %d bytes\n\r",memory_end-main_memory_start);
+ 	if (!(pid=fork())) {
+ 		close(0);
+ 		if (open("/etc/rc",O_RDONLY,0))
+@@ -210,7 +210,7 @@ void init(void)
+ 			/* nothing */;
+ 	while (1) {
+ 		if ((pid=fork())<0) {
+-			printf("Fork failed in init\r\n");
++			printfw("Fork failed in init\r\n");
+ 			continue;
+ 		}
+ 		if (!pid) {
+@@ -224,7 +224,7 @@ void init(void)
+ 		while (1)
+ 			if (pid == wait(&i))
+ 				break;
+-		printf("\n\rchild %d died with code %04x\n\r",pid,i);
++		printfw("\n\rchild %d died with code %04x\n\r",pid,i);
+ 		sync();
+ 	}
+ 	_exit(0);	/* NOTE! _exit, not exit() */
+diff --git a/init/main.s b/init/main.s
+index ad0c240..6f475fc 100755
+--- a/init/main.s
++++ b/init/main.s
+@@ -4,17 +4,17 @@ gcc_compiled.:
+ LC0:
+ 	.ascii "out of memory\12\15\0"
+ 	.align 2
+-_sprintf:
++sprintf:
+ 	movl 4(%esp),%edx
+ 	leal 12(%esp),%eax
+ 	pushl %eax
+ 	pushl 12(%esp)
+ 	pushl %edx
+-	call _vsprintf
++	call vsprintf
+ 	addl $12,%esp
+ 	ret
+ 	.align 2
+-_time_init:
++time_init:
+ 	pushl %ebp
+ 	movl %esp,%ebp
+ 	subl $44,%esp
+@@ -191,26 +191,26 @@ L65:
+ 	decl -20(%ebp)
+ 	leal -36(%ebp),%eax
+ 	pushl %eax
+-	call _kernel_mktime
+-	movl %eax,_startup_time
++	call kernel_mktime
++	movl %eax,startup_time
+ 	leave
+ 	ret
+ .data
+ 	.align 2
+-_memory_end:
++memory_end:
+ 	.long 0
+ 	.align 2
+-_buffer_memory_end:
++buffer_memory_end:
+ 	.long 0
+ 	.align 2
+-_main_memory_start:
++main_memory_start:
+ 	.long 0
+ .text
+ LC1:
+ 	.ascii "/bin/sh\0"
+ .data
+ 	.align 2
+-_argv_rc:
++argv_rc:
+ 	.long LC1
+ 	.long 0
+ .text
+@@ -218,7 +218,7 @@ LC2:
+ 	.ascii "HOME=/\0"
+ .data
+ 	.align 2
+-_envp_rc:
++envp_rc:
+ 	.long LC2
+ 	.long 0
+ 	.long 0
+@@ -227,7 +227,7 @@ LC3:
+ 	.ascii "-/bin/sh\0"
+ .data
+ 	.align 2
+-_argv:
++argv:
+ 	.long LC3
+ 	.long 0
+ .text
+@@ -235,7 +235,7 @@ LC4:
+ 	.ascii "HOME=/usr/root\0"
+ .data
+ 	.align 2
+-_envp:
++envp:
+ 	.long LC4
+ 	.long 0
+ 	.long 0
+@@ -243,17 +243,17 @@ _envp:
+ LC5:
+ 	.ascii "TERM=con%dx%d\0"
+ 	.align 2
+-.globl _main
+-_main:
++.globl main
++main:
+ 	pushl %ebp
+ 	movl %esp,%ebp
+ 	subl $8,%esp
+ 	pushl %edi
+ 	pushl %esi
+ 	movzwl 590332,%eax
+-	movl %eax,_ROOT_DEV
++	movl %eax,ROOT_DEV
+ 	movzwl 590330,%eax
+-	movl %eax,_SWAP_DEV
++	movl %eax,SWAP_DEV
+ 	movw 589838,%dx
+ 	andl $255,%edx
+ 	pushl %edx
+@@ -264,11 +264,11 @@ _main:
+ 	movzwl -4(%ebp),%eax
+ 	pushl %eax
+ 	pushl $LC5
+-	pushl $_term
+-	call _sprintf
+-	movl $_term,_envp+4
+-	movl $_term,_envp_rc+4
+-	movl $_drive_info,%edi
++	pushl $term
++	call sprintf
++	movl $term,envp+4
++	movl $term,envp_rc+4
++	movl $drive_info,%edi
+ 	movl $589952,%esi
+ 	movl $8,%ecx
+ 	cld
+@@ -277,42 +277,42 @@ _main:
+ 	movzwl 589826,%eax
+ 	sall $10,%eax
+ 	addl $1048576,%eax
+-	movl %eax,_memory_end
+-	andl $-4096,_memory_end
++	movl %eax,memory_end
++	andl $-4096,memory_end
+ 	addl $16,%esp
+-	cmpl $16777216,_memory_end
++	cmpl $16777216,memory_end
+ 	jle L69
+-	movl $16777216,_memory_end
++	movl $16777216,memory_end
+ L69:
+-	cmpl $12582912,_memory_end
++	cmpl $12582912,memory_end
+ 	jle L70
+-	movl $4194304,_buffer_memory_end
++	movl $4194304,buffer_memory_end
+ 	jmp L71
+ 	.align 2
+ L70:
+-	cmpl $6291456,_memory_end
++	cmpl $6291456,memory_end
+ 	jle L72
+-	movl $2097152,_buffer_memory_end
++	movl $2097152,buffer_memory_end
+ 	jmp L71
+ 	.align 2
+ L72:
+-	movl $1048576,_buffer_memory_end
++	movl $1048576,buffer_memory_end
+ L71:
+-	movl _buffer_memory_end,%eax
+-	movl %eax,_main_memory_start
+-	pushl _memory_end
+-	pushl _buffer_memory_end
+-	call _mem_init
+-	call _trap_init
+-	call _blk_dev_init
+-	call _chr_dev_init
+-	call _tty_init
+-	call _time_init
+-	call _sched_init
+-	pushl _buffer_memory_end
+-	call _buffer_init
+-	call _hd_init
+-	call _floppy_init
++	movl buffer_memory_end,%eax
++	movl %eax,main_memory_start
++	pushl memory_end
++	pushl buffer_memory_end
++	call mem_init
++	call trap_init
++	call blk_dev_init
++	call chr_dev_init
++	call tty_init
++	call time_init
++	call sched_init
++	pushl buffer_memory_end
++	call buffer_init
++	call hd_init
++	call floppy_init
+ /APP
+ 	sti
+ 	movl %esp,%eax
+@@ -337,12 +337,12 @@ L71:
+ 	testl %edx,%edx
+ 	jge L75
+ 	negl %edx
+-	movl %edx,_errno
++	movl %edx,errno
+ 	movl $-1,%edx
+ L75:
+ 	testl %edx,%edx
+ 	jne L74
+-	call _init
++	call init
+ L74:
+ L77:
+ 	movl $29,%eax
+@@ -357,18 +357,18 @@ L77:
+ 	leave
+ 	ret
+ 	.align 2
+-_printf:
++printf:
+ 	pushl %ebx
+ 	leal 12(%esp),%eax
+ 	pushl %eax
+ 	pushl 12(%esp)
+-	pushl $_printbuf
+-	call _vsprintf
++	pushl $printbuf
++	call vsprintf
+ 	movl %eax,%ebx
+ 	pushl %ebx
+-	pushl $_printbuf
++	pushl $printbuf
+ 	pushl $1
+-	call _write
++	call write
+ 	movl %ebx,%eax
+ 	addl $24,%esp
+ 	popl %ebx
+@@ -386,8 +386,8 @@ LC10:
+ LC11:
+ 	.ascii "\12\15child %d died with code %04x\12\15\0"
+ 	.align 2
+-.globl _init
+-_init:
++.globl init
++init:
+ 	pushl %ebp
+ 	movl %esp,%ebp
+ 	subl $4,%esp
+@@ -395,35 +395,35 @@ _init:
+ 	pushl %esi
+ 	pushl %ebx
+ 	xorl %eax,%eax
+-	movl $_drive_info,%ebx
++	movl $drive_info,%ebx
+ /APP
+ 	int $0x80
+ /NO_APP
+ 	testl %eax,%eax
+ 	jge L82
+ 	negl %eax
+-	movl %eax,_errno
++	movl %eax,errno
+ L82:
+ 	pushl $0
+ 	pushl $2
+ 	pushl $LC6
+-	call _open
++	call open
+ 	pushl $0
+-	call _dup
++	call dup
+ 	pushl $0
+-	call _dup
+-	movl _nr_buffers,%eax
++	call dup
++	movl nr_buffers,%eax
+ 	sall $10,%eax
+ 	pushl %eax
+-	pushl _nr_buffers
++	pushl nr_buffers
+ 	pushl $LC7
+-	call _printf
++	call printf
+ 	addl $32,%esp
+-	movl _memory_end,%eax
+-	subl _main_memory_start,%eax
++	movl memory_end,%eax
++	subl main_memory_start,%eax
+ 	pushl %eax
+ 	pushl $LC8
+-	call _printf
++	call printf
+ 	addl $8,%esp
+ 	movl $2,%eax
+ /APP
+@@ -436,30 +436,30 @@ L82:
+ 	.align 2
+ L86:
+ 	negl %eax
+-	movl %eax,_errno
++	movl %eax,errno
+ 	movl $-1,%edi
+ L85:
+ 	testl %edi,%edi
+ 	jne L84
+ 	pushl $0
+-	call _close
++	call close
+ 	pushl $0
+ 	pushl $0
+ 	pushl $LC9
+-	call _open
++	call open
+ 	addl $16,%esp
+ 	testl %eax,%eax
+ 	je L87
+ 	pushl $1
+-	call __exit
++	call _exit
+ 	.align 2
+ L87:
+-	pushl $_envp_rc
+-	pushl $_argv_rc
++	pushl $envp_rc
++	pushl $argv_rc
+ 	pushl $LC1
+-	call _execve
++	call execve
+ 	pushl $2
+-	call __exit
++	call _exit
+ 	.align 2
+ L84:
+ 	testl %edi,%edi
+@@ -467,7 +467,7 @@ L84:
+ 	leal -4(%ebp),%esi
+ L89:
+ 	pushl %esi
+-	call _wait
++	call wait
+ 	addl $4,%esp
+ 	cmpl %edi,%eax
+ 	jne L89
+@@ -481,14 +481,14 @@ L91:
+ 	testl %eax,%eax
+ 	jge L94
+ 	negl %eax
+-	movl %eax,_errno
++	movl %eax,errno
+ 	movl $-1,%eax
+ L94:
+ 	movl %eax,%edi
+ 	testl %edi,%edi
+ 	jge L93
+ 	pushl $LC10
+-	call _printf
++	call printf
+ 	addl $4,%esp
+ 	jmp L91
+ 	.align 2
+@@ -496,39 +496,39 @@ L93:
+ 	testl %edi,%edi
+ 	jne L96
+ 	pushl $0
+-	call _close
++	call close
+ 	pushl $1
+-	call _close
++	call close
+ 	pushl $2
+-	call _close
+-	call _setsid
++	call close
++	call setsid
+ 	pushl $0
+ 	pushl $2
+ 	pushl $LC6
+-	call _open
++	call open
+ 	pushl $0
+-	call _dup
++	call dup
+ 	pushl $0
+-	call _dup
++	call dup
+ 	addl $32,%esp
+-	pushl $_envp
+-	pushl $_argv
++	pushl $envp
++	pushl $argv
+ 	pushl $LC1
+-	call _execve
++	call execve
+ 	pushl %eax
+-	call __exit
++	call _exit
+ 	.align 2
+ L96:
+ L97:
+ 	pushl %esi
+-	call _wait
++	call wait
+ 	addl $4,%esp
+ 	cmpl %edi,%eax
+ 	jne L97
+ 	pushl -4(%ebp)
+ 	pushl %edi
+ 	pushl $LC11
+-	call _printf
++	call printf
+ 	addl $12,%esp
+ 	movl $36,%eax
+ /APP
+@@ -537,7 +537,7 @@ L97:
+ 	testl %eax,%eax
+ 	jge L91
+ 	negl %eax
+-	movl %eax,_errno
++	movl %eax,errno
+ 	jmp L91
+ 	.align 2
+ 	leal -16(%ebp),%esp
+@@ -546,6 +546,6 @@ L97:
+ 	popl %edi
+ 	leave
+ 	ret
+-.comm _drive_info,32
+-.lcomm _term,32
+-.lcomm _printbuf,1024
++.comm drive_info,32
++.lcomm term,32
++.lcomm printbuf,1024
+diff --git a/kernel/Makefile b/kernel/Makefile
+index 5f5685f..20ef475 100755
+--- a/kernel/Makefile
++++ b/kernel/Makefile
+@@ -6,13 +6,13 @@
+ # unless it's something special (ie not a .c file).
+ #
+ 
+-AR	=gar
+-AS	=gas
+-LD	=gld
++AR	=ar
++AS	=as --32
++LD	=ld -m  elf_i386
+ LDFLAGS	=-s -x
+ CC	=gcc
+-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fcombine-regs \
+-	-finline-functions -mstring-insns -nostdinc -I../include
++CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
++	-nostdinc -I../include -m32 -fno-stack-protector
+ CPP	=gcc -E -nostdinc -I../include
+ 
+ .c.s:
+diff --git a/kernel/asm.s b/kernel/asm.s
+index b3bbf8b..6a582c9 100755
+--- a/kernel/asm.s
++++ b/kernel/asm.s
+@@ -11,14 +11,14 @@
+  * the fpu must be properly saved/resored. This hasn't been tested.
+  */
+ 
+-.globl _divide_error,_debug,_nmi,_int3,_overflow,_bounds,_invalid_op
+-.globl _double_fault,_coprocessor_segment_overrun
+-.globl _invalid_TSS,_segment_not_present,_stack_segment
+-.globl _general_protection,_coprocessor_error,_irq13,_reserved
+-.globl _alignment_check
+-
+-_divide_error:
+-	pushl $_do_divide_error
++.globl divide_error,debug,nmi,int3,overflow,bounds,invalid_op
++.globl double_fault,coprocessor_segment_overrun
++.globl invalid_TSS,segment_not_present,stack_segment
++.globl general_protection,coprocessor_error,irq13,reserved
++.globl alignment_check
++
++divide_error:
++	pushl $do_divide_error
+ no_error_code:
+ 	xchgl %eax,(%esp)
+ 	pushl %ebx
+@@ -51,39 +51,39 @@ no_error_code:
+ 	popl %eax
+ 	iret
+ 
+-_debug:
+-	pushl $_do_int3		# _do_debug
++debug:
++	pushl $do_int3		# _do_debug
+ 	jmp no_error_code
+ 
+-_nmi:
+-	pushl $_do_nmi
++nmi:
++	pushl $do_nmi
+ 	jmp no_error_code
+ 
+-_int3:
+-	pushl $_do_int3
++int3:
++	pushl $do_int3
+ 	jmp no_error_code
+ 
+-_overflow:
+-	pushl $_do_overflow
++overflow:
++	pushl $do_overflow
+ 	jmp no_error_code
+ 
+-_bounds:
+-	pushl $_do_bounds
++bounds:
++	pushl $do_bounds
+ 	jmp no_error_code
+ 
+-_invalid_op:
+-	pushl $_do_invalid_op
++invalid_op:
++	pushl $do_invalid_op
+ 	jmp no_error_code
+ 
+-_coprocessor_segment_overrun:
+-	pushl $_do_coprocessor_segment_overrun
++coprocessor_segment_overrun:
++	pushl $do_coprocessor_segment_overrun
+ 	jmp no_error_code
+ 
+-_reserved:
+-	pushl $_do_reserved
++reserved:
++	pushl $do_reserved
+ 	jmp no_error_code
+ 
+-_irq13:
++irq13:
+ 	pushl %eax
+ 	xorb %al,%al
+ 	outb %al,$0xF0
+@@ -93,10 +93,10 @@ _irq13:
+ 1:	jmp 1f
+ 1:	outb %al,$0xA0
+ 	popl %eax
+-	jmp _coprocessor_error
++	jmp coprocessor_error
+ 
+-_double_fault:
+-	pushl $_do_double_fault
++double_fault:
++	pushl $do_double_fault
+ error_code:
+ 	xchgl %eax,4(%esp)		# error code <-> %eax
+ 	xchgl %ebx,(%esp)		# &function <-> %ebx
+@@ -129,23 +129,23 @@ error_code:
+ 	popl %eax
+ 	iret
+ 
+-_invalid_TSS:
+-	pushl $_do_invalid_TSS
++invalid_TSS:
++	pushl $do_invalid_TSS
+ 	jmp error_code
+ 
+-_segment_not_present:
+-	pushl $_do_segment_not_present
++segment_not_present:
++	pushl $do_segment_not_present
+ 	jmp error_code
+ 
+-_stack_segment:
+-	pushl $_do_stack_segment
++stack_segment:
++	pushl $do_stack_segment
+ 	jmp error_code
+ 
+-_general_protection:
+-	pushl $_do_general_protection
++general_protection:
++	pushl $do_general_protection
+ 	jmp error_code
+ 
+-_alignment_check:
+-	pushl $_do_alignment_check
++alignment_check:
++	pushl $do_alignment_check
+ 	jmp error_code
+ 
+diff --git a/kernel/blk_drv/Makefile b/kernel/blk_drv/Makefile
+index e1393ac..d1bc5ce 100755
+--- a/kernel/blk_drv/Makefile
++++ b/kernel/blk_drv/Makefile
+@@ -6,13 +6,13 @@
+ # unless it's something special (ie not a .c file).
+ #
+ 
+-AR	=gar
+-AS	=gas
+-LD	=gld
++AR	=ar
++AS	=as --32
++LD	=ld -m elf_i386
+ LDFLAGS	=-s -x
+ CC	=gcc
+-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fcombine-regs \
+-	-finline-functions -mstring-insns -nostdinc -I../../include
++CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
++	-finline-functions -nostdinc -I../../include -m32 -fno-stack-protector
+ CPP	=gcc -E -nostdinc -I../../include
+ 
+ .c.s:
+diff --git a/kernel/blk_drv/blk.h b/kernel/blk_drv/blk.h
+index 0c62c82..eaabae0 100755
+--- a/kernel/blk_drv/blk.h
++++ b/kernel/blk_drv/blk.h
+@@ -107,7 +107,7 @@ int DEVICE_TIMEOUT = 0;
+ #endif
+ static void (DEVICE_REQUEST)(void);
+ 
+-extern inline void unlock_buffer(struct buffer_head * bh)
++static inline void unlock_buffer(struct buffer_head * bh)
+ {
+ 	if (!bh->b_lock)
+ 		printk(DEVICE_NAME ": free buffer being unlocked\n");
+@@ -115,7 +115,7 @@ extern inline void unlock_buffer(struct buffer_head * bh)
+ 	wake_up(&bh->b_wait);
+ }
+ 
+-extern inline void end_request(int uptodate)
++static inline void end_request(int uptodate)
+ {
+ 	DEVICE_OFF(CURRENT->dev);
+ 	if (CURRENT->bh) {
+diff --git a/kernel/blk_drv/floppy.c b/kernel/blk_drv/floppy.c
+index 3bccac0..0d8dfc5 100755
+--- a/kernel/blk_drv/floppy.c
++++ b/kernel/blk_drv/floppy.c
+@@ -156,7 +156,7 @@ repeat:
+ #define copy_buffer(from,to) \
+ __asm__("cld ; rep ; movsl" \
+ 	::"c" (BLOCK_SIZE/4),"S" ((long)(from)),"D" ((long)(to)) \
+-	:"cx","di","si")
++	:)
+ 
+ static void setup_DMA(void)
+ {
+diff --git a/kernel/blk_drv/hd.c b/kernel/blk_drv/hd.c
+index 563be0a..f1f5e6d 100755
+--- a/kernel/blk_drv/hd.c
++++ b/kernel/blk_drv/hd.c
+@@ -62,10 +62,10 @@ static struct hd_struct {
+ static int hd_sizes[5*MAX_HD] = {0, };
+ 
+ #define port_read(port,buf,nr) \
+-__asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr):"cx","di")
++__asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr):)
+ 
+ #define port_write(port,buf,nr) \
+-__asm__("cld;rep;outsw"::"d" (port),"S" (buf),"c" (nr):"cx","si")
++__asm__("cld;rep;outsw"::"d" (port),"S" (buf),"c" (nr):)
+ 
+ extern void hd_interrupt(void);
+ extern void rd_load(void);
+diff --git a/kernel/chr_drv/Makefile b/kernel/chr_drv/Makefile
+index 66f4cec..dd18785 100755
+--- a/kernel/chr_drv/Makefile
++++ b/kernel/chr_drv/Makefile
+@@ -6,13 +6,13 @@
+ # unless it's something special (ie not a .c file).
+ #
+ 
+-AR	=gar
+-AS	=gas
+-LD	=gld
++AR	=ar
++AS	=as --32
++LD	=ld -m elf_i386
+ LDFLAGS	=-s -x
+ CC	=gcc
+-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fcombine-regs \
+-	-finline-functions -mstring-insns -nostdinc -I../../include
++CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
++	-finline-functions -nostdinc -I../../include -m32 -fno-stack-protector
+ CPP	=gcc -E -nostdinc -I../../include
+ 
+ .c.s:
+diff --git a/kernel/chr_drv/console.c b/kernel/chr_drv/console.c
+index 781fdab..f556236 100755
+--- a/kernel/chr_drv/console.c
++++ b/kernel/chr_drv/console.c
+@@ -199,14 +199,14 @@ static void scrup(int currcons)
+ 				__asm__("cld\n\t"
+ 					"rep\n\t"
+ 					"movsl\n\t"
+-					"movl _video_num_columns,%1\n\t"
++					"movl video_num_columns,%1\n\t"
+ 					"rep\n\t"
+ 					"stosw"
+ 					::"a" (video_erase_char),
+ 					"c" ((video_num_lines-1)*video_num_columns>>1),
+ 					"D" (video_mem_start),
+ 					"S" (origin)
+-					:"cx","di","si");
++					:);
+ 				scr_end -= origin-video_mem_start;
+ 				pos -= origin-video_mem_start;
+ 				origin = video_mem_start;
+@@ -217,21 +217,21 @@ static void scrup(int currcons)
+ 					::"a" (video_erase_char),
+ 					"c" (video_num_columns),
+ 					"D" (scr_end-video_size_row)
+-					:"cx","di");
++					:);
+ 			}
+ 			set_origin(currcons);
+ 		} else {
+ 			__asm__("cld\n\t"
+ 				"rep\n\t"
+ 				"movsl\n\t"
+-				"movl _video_num_columns,%%ecx\n\t"
++				"movl video_num_columns,%%ecx\n\t"
+ 				"rep\n\t"
+ 				"stosw"
+ 				::"a" (video_erase_char),
+ 				"c" ((bottom-top-1)*video_num_columns>>1),
+ 				"D" (origin+video_size_row*top),
+ 				"S" (origin+video_size_row*(top+1))
+-				:"cx","di","si");
++				:);
+ 		}
+ 	}
+ 	else		/* Not EGA/VGA */
+@@ -239,14 +239,14 @@ static void scrup(int currcons)
+ 		__asm__("cld\n\t"
+ 			"rep\n\t"
+ 			"movsl\n\t"
+-			"movl _video_num_columns,%%ecx\n\t"
++			"movl video_num_columns,%%ecx\n\t"
+ 			"rep\n\t"
+ 			"stosw"
+ 			::"a" (video_erase_char),
+ 			"c" ((bottom-top-1)*video_num_columns>>1),
+ 			"D" (origin+video_size_row*top),
+ 			"S" (origin+video_size_row*(top+1))
+-			:"cx","di","si");
++			:);
+ 	}
+ }
+ 
+@@ -260,14 +260,14 @@ static void scrdown(int currcons)
+ 			"rep\n\t"
+ 			"movsl\n\t"
+ 			"addl $2,%%edi\n\t"	/* %edi has been decremented by 4 */
+-			"movl _video_num_columns,%%ecx\n\t"
++			"movl video_num_columns,%%ecx\n\t"
+ 			"rep\n\t"
+ 			"stosw"
+ 			::"a" (video_erase_char),
+ 			"c" ((bottom-top-1)*video_num_columns>>1),
+ 			"D" (origin+video_size_row*bottom-4),
+ 			"S" (origin+video_size_row*(bottom-1)-4)
+-			:"ax","cx","di","si");
++			:);
+ 	}
+ 	else		/* Not EGA/VGA */
+ 	{
+@@ -275,14 +275,14 @@ static void scrdown(int currcons)
+ 			"rep\n\t"
+ 			"movsl\n\t"
+ 			"addl $2,%%edi\n\t"	/* %edi has been decremented by 4 */
+-			"movl _video_num_columns,%%ecx\n\t"
++			"movl video_num_columns,%%ecx\n\t"
+ 			"rep\n\t"
+ 			"stosw"
+ 			::"a" (video_erase_char),
+ 			"c" ((bottom-top-1)*video_num_columns>>1),
+ 			"D" (origin+video_size_row*bottom-4),
+ 			"S" (origin+video_size_row*(bottom-1)-4)
+-			:"ax","cx","di","si");
++			:);
+ 	}
+ }
+ 
+@@ -347,7 +347,7 @@ static void csi_J(int currcons, int vpar)
+ 		"stosw\n\t"
+ 		::"c" (count),
+ 		"D" (start),"a" (video_erase_char)
+-		:"cx","di");
++		:);
+ }
+ 
+ static void csi_K(int currcons, int vpar)
+@@ -378,7 +378,7 @@ static void csi_K(int currcons, int vpar)
+ 		"stosw\n\t"
+ 		::"c" (count),
+ 		"D" (start),"a" (video_erase_char)
+-		:"cx","di");
++		:);
+ }
+ 
+ void csi_m(int currcons )
+@@ -601,7 +601,7 @@ void con_write(struct tty_struct * tty)
+ 						::"a" (translate[c-32]),
+ 						"m" (*(short *)pos),
+ 						"m" (attr)
+-						:"ax");
++						:);
+ 					pos += 2;
+ 					x++;
+ 				} else if (c==27)
+@@ -1017,7 +1017,7 @@ void console_print(const char * b)
+ 			::"a" (c),
+ 			"m" (*(short *)pos),
+ 			"m" (attr)
+-			:"ax");
++			:);
+ 		pos += 2;
+ 		x++;
+ 	}
+diff --git a/kernel/chr_drv/keyboard.S b/kernel/chr_drv/keyboard.S
+index 5995738..d7481eb 100755
+--- a/kernel/chr_drv/keyboard.S
++++ b/kernel/chr_drv/keyboard.S
+@@ -18,7 +18,7 @@
+ #define KBD_FINNISH
+ 
+ .text
+-.globl _keyboard_interrupt
++.globl keyboard_interrupt
+ 
+ /*
+  * these are for the keyboard read functions
+@@ -39,7 +39,7 @@ e0:	.byte 0
+  *  keyboard scan-code and converts it into the appropriate
+  *  ascii character(s).
+  */
+-_keyboard_interrupt:
++keyboard_interrupt:
+ 	pushl %eax
+ 	pushl %ebx
+ 	pushl %ecx
+@@ -49,8 +49,8 @@ _keyboard_interrupt:
+ 	movl $0x10,%eax
+ 	mov %ax,%ds
+ 	mov %ax,%es
+-	movl _blankinterval,%eax
+-	movl %eax,_blankcount
++	movl blankinterval,%eax
++	movl %eax,blankcount
+ 	xorl %eax,%eax		/* %eax is scan code */
+ 	inb $0x60,%al
+ 	cmpb $0xe0,%al
+@@ -73,7 +73,7 @@ e0_e1:	inb $0x61,%al
+ 	movb $0x20,%al
+ 	outb %al,$0x20
+ 	pushl $0
+-	call _do_tty_interrupt
++	call do_tty_interrupt
+ 	addl $4,%esp
+ 	pop %es
+ 	pop %ds
+@@ -95,7 +95,7 @@ set_e1:	movb $2,e0
+ put_queue:
+ 	pushl %ecx
+ 	pushl %edx
+-	movl _table_list,%edx		# read-queue for console
++	movl table_list,%edx		# read-queue for console
+ 	movl head(%edx),%ecx
+ 1:	movb %al,buf(%edx,%ecx)
+ 	incl %ecx
+@@ -164,9 +164,9 @@ uncaps:	andb $0x7f,mode
+ scroll:
+ 	testb $0x03,mode
+ 	je 1f
+-	call _show_mem
++	call show_mem
+ 	jmp 2f
+-1:	call _show_state
++1:	call show_state
+ 2:	xorb $1,leds
+ 	jmp set_leds
+ num:	xorb $2,leds
+@@ -239,7 +239,7 @@ ok_func:
+ 	jmp put_queue
+ alt_func:
+ 	pushl %eax
+-	call _change_console
++	call change_console
+ 	popl %eax
+ end_func:
+ 	ret
+diff --git a/kernel/chr_drv/rs_io.s b/kernel/chr_drv/rs_io.s
+index 67baadb..949f3aa 100755
+--- a/kernel/chr_drv/rs_io.s
++++ b/kernel/chr_drv/rs_io.s
+@@ -11,7 +11,7 @@
+  */
+ 
+ .text
+-.globl _rs1_interrupt,_rs2_interrupt
++.globl rs1_interrupt,rs2_interrupt
+ 
+ size	= 1024				/* must be power of two !
+ 					   and must match the value
+@@ -31,12 +31,12 @@ startup	= 256		/* chars left in write queue when we restart it */
+  * the interrupt is coming from, and take appropriate action.
+  */
+ .align 2
+-_rs1_interrupt:
+-	pushl $_table_list+8
++rs1_interrupt:
++	pushl $table_list+8
+ 	jmp rs_int
+ .align 2
+-_rs2_interrupt:
+-	pushl $_table_list+16
++rs2_interrupt:
++	pushl $table_list+16
+ rs_int:
+ 	pushl %edx
+ 	pushl %ecx
+@@ -95,7 +95,7 @@ line_status:
+ read_char:
+ 	inb %dx,%al
+ 	movl %ecx,%edx
+-	subl $_table_list,%edx
++	subl $table_list,%edx
+ 	shrl $3,%edx
+ 	movl (%ecx),%ecx		# read-queue
+ 	movl head(%ecx),%ebx
+@@ -107,7 +107,7 @@ read_char:
+ 	movl %ebx,head(%ecx)
+ 1:	addl $63,%edx
+ 	pushl %edx
+-	call _do_tty_interrupt
++	call do_tty_interrupt
+ 	addl $4,%esp
+ 	ret
+ 
+diff --git a/kernel/chr_drv/tty_io.c b/kernel/chr_drv/tty_io.c
+index 6551da1..101a037 100755
+--- a/kernel/chr_drv/tty_io.c
++++ b/kernel/chr_drv/tty_io.c
+@@ -338,7 +338,7 @@ int tty_read(unsigned channel, char * buf, int nr)
+ 
+ int tty_write(unsigned channel, char * buf, int nr)
+ {
+-	static cr_flag=0;
++	static int cr_flag=0;
+ 	struct tty_struct * tty;
+ 	char c, *b=buf;
+ 
+diff --git a/kernel/math/Makefile b/kernel/math/Makefile
+index 834283d..2b3ceb2 100755
+--- a/kernel/math/Makefile
++++ b/kernel/math/Makefile
+@@ -6,13 +6,13 @@
+ # unless it's something special (ie not a .c file).
+ #
+ 
+-AR	=gar
+-AS	=gas
+-LD	=gld
++AR	=ar
++AS	=as --32
++LD	=ld
+ LDFLAGS	=-s -x
+ CC	=gcc
+-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fcombine-regs \
+-	-finline-functions -mstring-insns -nostdinc -I../../include
++CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
++	-finline-functions -nostdinc -I../../include -m32 -fno-stack-protector
+ CPP	=gcc -E -nostdinc -I../../include
+ 
+ .c.s:
+diff --git a/kernel/math/get_put.c b/kernel/math/get_put.c
+index 5f8167b..e6517f4 100755
+--- a/kernel/math/get_put.c
++++ b/kernel/math/get_put.c
+@@ -109,6 +109,7 @@ __asm__("addl %4,%0 ; adcl $0,%1":"=r" (low),"=r" (high) \
+ 
+ void get_BCD(temp_real * tmp, struct info * info, unsigned short code)
+ {
++#if 0
+ 	int k;
+ 	char * addr;
+ 	temp_int i;
+@@ -126,6 +127,7 @@ void get_BCD(temp_real * tmp, struct info * info, unsigned short code)
+ 		ADD64((c&0xf), i.a, i.b);
+ 	}
+ 	int_to_real(&i,tmp);
++#endif
+ }
+ 
+ void put_short_real(const temp_real * tmp,
+@@ -218,6 +220,7 @@ __asm__("divl %6 ; xchgl %1,%2 ; divl %6" \
+ 
+ void put_BCD(const temp_real * tmp,struct info * info, unsigned short code)
+ {
++#if 0
+ 	int k,rem;
+ 	char * addr;
+ 	temp_int i;
+@@ -237,4 +240,5 @@ void put_BCD(const temp_real * tmp,struct info * info, unsigned short code)
+ 		c += rem<<4;
+ 		put_fs_byte(c,addr++);
+ 	}
++#endif
+ }
+diff --git a/kernel/sys_call.s b/kernel/sys_call.s
+index f85ddf3..4a67f04 100755
+--- a/kernel/sys_call.s
++++ b/kernel/sys_call.s
+@@ -68,9 +68,9 @@ ENOSYS = 38
+  * Ok, I get parallel printer interrupts while using the floppy for some
+  * strange reason. Urgel. Now I just ignore them.
+  */
+-.globl _system_call,_sys_fork,_timer_interrupt,_sys_execve
+-.globl _hd_interrupt,_floppy_interrupt,_parallel_interrupt
+-.globl _device_not_available, _coprocessor_error
++.globl system_call,sys_fork,timer_interrupt,sys_execve
++.globl hd_interrupt,floppy_interrupt,parallel_interrupt
++.globl device_not_available, coprocessor_error
+ 
+ .align 2
+ bad_sys_call:
+@@ -79,9 +79,9 @@ bad_sys_call:
+ .align 2
+ reschedule:
+ 	pushl $ret_from_sys_call
+-	jmp _schedule
++	jmp schedule
+ .align 2
+-_system_call:
++system_call:
+ 	push %ds
+ 	push %es
+ 	push %fs
+@@ -94,19 +94,19 @@ _system_call:
+ 	mov %dx,%es
+ 	movl $0x17,%edx		# fs points to local data space
+ 	mov %dx,%fs
+-	cmpl _NR_syscalls,%eax
++	cmpl NR_syscalls,%eax
+ 	jae bad_sys_call
+-	call _sys_call_table(,%eax,4)
++	call sys_call_table(,%eax,4)
+ 	pushl %eax
+ 2:
+-	movl _current,%eax
++	movl current,%eax
+ 	cmpl $0,state(%eax)		# state
+ 	jne reschedule
+ 	cmpl $0,counter(%eax)		# counter
+ 	je reschedule
+ ret_from_sys_call:
+-	movl _current,%eax
+-	cmpl _task,%eax			# task[0] cannot have signals
++	movl current,%eax
++	cmpl task,%eax			# task[0] cannot have signals
+ 	je 3f
+ 	cmpw $0x0f,CS(%esp)		# was old code segment supervisor ?
+ 	jne 3f
+@@ -122,7 +122,7 @@ ret_from_sys_call:
+ 	movl %ebx,signal(%eax)
+ 	incl %ecx
+ 	pushl %ecx
+-	call _do_signal
++	call do_signal
+ 	popl %ecx
+ 	testl %eax, %eax
+ 	jne 2b		# see if we need to switch tasks, or do more signals
+@@ -137,7 +137,7 @@ ret_from_sys_call:
+ 	iret
+ 
+ .align 2
+-_coprocessor_error:
++coprocessor_error:
+ 	push %ds
+ 	push %es
+ 	push %fs
+@@ -152,10 +152,10 @@ _coprocessor_error:
+ 	movl $0x17,%eax
+ 	mov %ax,%fs
+ 	pushl $ret_from_sys_call
+-	jmp _math_error
++	jmp math_error
+ 
+ .align 2
+-_device_not_available:
++device_not_available:
+ 	push %ds
+ 	push %es
+ 	push %fs
+@@ -173,12 +173,12 @@ _device_not_available:
+ 	clts				# clear TS so that we can use math
+ 	movl %cr0,%eax
+ 	testl $0x4,%eax			# EM (math emulation bit)
+-	je _math_state_restore
++	je math_state_restore
+ 	pushl %ebp
+ 	pushl %esi
+ 	pushl %edi
+ 	pushl $0		# temporary storage for ORIG_EIP
+-	call _math_emulate
++	call math_emulate
+ 	addl $4,%esp
+ 	popl %edi
+ 	popl %esi
+@@ -186,7 +186,7 @@ _device_not_available:
+ 	ret
+ 
+ .align 2
+-_timer_interrupt:
++timer_interrupt:
+ 	push %ds		# save ds,es and put kernel data space
+ 	push %es		# into them. %fs is used by _system_call
+ 	push %fs
+@@ -200,27 +200,27 @@ _timer_interrupt:
+ 	mov %ax,%es
+ 	movl $0x17,%eax
+ 	mov %ax,%fs
+-	incl _jiffies
++	incl jiffies
+ 	movb $0x20,%al		# EOI to interrupt controller #1
+ 	outb %al,$0x20
+ 	movl CS(%esp),%eax
+ 	andl $3,%eax		# %eax is CPL (0 or 3, 0=supervisor)
+ 	pushl %eax
+-	call _do_timer		# 'do_timer(long CPL)' does everything from
++	call do_timer		# 'do_timer(long CPL)' does everything from
+ 	addl $4,%esp		# task switching to accounting ...
+ 	jmp ret_from_sys_call
+ 
+ .align 2
+-_sys_execve:
++sys_execve:
+ 	lea EIP(%esp),%eax
+ 	pushl %eax
+-	call _do_execve
++	call do_execve
+ 	addl $4,%esp
+ 	ret
+ 
+ .align 2
+-_sys_fork:
+-	call _find_empty_process
++sys_fork:
++	call find_empty_process
+ 	testl %eax,%eax
+ 	js 1f
+ 	push %gs
+@@ -228,11 +228,11 @@ _sys_fork:
+ 	pushl %edi
+ 	pushl %ebp
+ 	pushl %eax
+-	call _copy_process
++	call copy_process
+ 	addl $20,%esp
+ 1:	ret
+ 
+-_hd_interrupt:
++hd_interrupt:
+ 	pushl %eax
+ 	pushl %ecx
+ 	pushl %edx
+@@ -249,11 +249,11 @@ _hd_interrupt:
+ 	jmp 1f			# give port chance to breathe
+ 1:	jmp 1f
+ 1:	xorl %edx,%edx
+-	movl %edx,_hd_timeout
+-	xchgl _do_hd,%edx
++	movl %edx,hd_timeout
++	xchgl do_hd,%edx
+ 	testl %edx,%edx
+ 	jne 1f
+-	movl $_unexpected_hd_interrupt,%edx
++	movl $unexpected_hd_interrupt,%edx
+ 1:	outb %al,$0x20
+ 	call *%edx		# "interesting" way of handling intr.
+ 	pop %fs
+@@ -264,7 +264,7 @@ _hd_interrupt:
+ 	popl %eax
+ 	iret
+ 
+-_floppy_interrupt:
++floppy_interrupt:
+ 	pushl %eax
+ 	pushl %ecx
+ 	pushl %edx
+@@ -279,10 +279,10 @@ _floppy_interrupt:
+ 	movb $0x20,%al
+ 	outb %al,$0x20		# EOI to interrupt controller #1
+ 	xorl %eax,%eax
+-	xchgl _do_floppy,%eax
++	xchgl do_floppy,%eax
+ 	testl %eax,%eax
+ 	jne 1f
+-	movl $_unexpected_floppy_interrupt,%eax
++	movl $unexpected_floppy_interrupt,%eax
+ 1:	call *%eax		# "interesting" way of handling intr.
+ 	pop %fs
+ 	pop %es
+@@ -292,7 +292,7 @@ _floppy_interrupt:
+ 	popl %eax
+ 	iret
+ 
+-_parallel_interrupt:
++parallel_interrupt:
+ 	pushl %eax
+ 	movb $0x20,%al
+ 	outb %al,$0x20
+diff --git a/lib/Makefile b/lib/Makefile
+index a4a33b5..eced5f0 100755
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -6,13 +6,13 @@
+ # unless it's something special (ie not a .c file).
+ #
+ 
+-AR	=gar
+-AS	=gas
+-LD	=gld
++AR	=ar
++AS	=as --32
++LD	=ld
+ LDFLAGS	=-s -x
+ CC	=gcc
+-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fcombine-regs \
+-	-finline-functions -mstring-insns -nostdinc -I../include
++CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
++	-nostdinc -I../include -m32 -fno-stack-protector
+ CPP	=gcc -E -nostdinc -I../include
+ 
+ .c.s:
+diff --git a/lib/malloc.c b/lib/malloc.c
+index 42723a7..795e330 100755
+--- a/lib/malloc.c
++++ b/lib/malloc.c
+@@ -153,7 +153,9 @@ void *malloc(unsigned int len)
+ 		free_bucket_desc = bdesc->next;
+ 		bdesc->refcnt = 0;
+ 		bdesc->bucket_size = bdir->size;
+-		bdesc->page = bdesc->freeptr = (void *) cp = get_free_page();
++		cp = get_free_page();
++		bdesc->freeptr = cp;
++		bdesc->page = bdesc->freeptr;
+ 		if (!cp)
+ 			panic("Out of memory in kernel malloc()");
+ 		/* Set up the chain of free objects */
+diff --git a/mm/Makefile b/mm/Makefile
+index bab2e4c..33f860f 100755
+--- a/mm/Makefile
++++ b/mm/Makefile
+@@ -1,9 +1,9 @@
+ CC	=gcc
+-CFLAGS	=-O -Wall -fstrength-reduce -fcombine-regs -fomit-frame-pointer \
+-	-finline-functions -nostdinc -I../include
+-AS	=gas
+-AR	=gar
+-LD	=gld
++CFLAGS	=-O -Wall -fstrength-reduce -fomit-frame-pointer \
++	-finline-functions -nostdinc -I../include -m32 -fno-stack-protector
++AS	=as --32
++AR	=ar
++LD	=ld -m elf_i386
+ CPP	=gcc -E -nostdinc -I../include
+ 
+ .c.o:
+diff --git a/mm/memory.c b/mm/memory.c
+index b7815bb..c22a579 100755
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -42,7 +42,7 @@ current->start_code + current->end_code)
+ unsigned long HIGH_MEMORY = 0;
+ 
+ #define copy_page(from,to) \
+-__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024):"cx","di","si")
++__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024):)
+ 
+ unsigned char mem_map [ PAGING_PAGES ] = {0,};
+ 
+diff --git a/mm/page.s b/mm/page.s
+index bd1c586..9ebf3f7 100755
+--- a/mm/page.s
++++ b/mm/page.s
+@@ -9,9 +9,9 @@
+  * the real work is done in mm.c
+  */
+ 
+-.globl _page_fault
++.globl page_fault
+ 
+-_page_fault:
++page_fault:
+ 	xchgl %eax,(%esp)
+ 	pushl %ecx
+ 	pushl %edx
+@@ -27,9 +27,9 @@ _page_fault:
+ 	pushl %eax
+ 	testl $1,%eax
+ 	jne 1f
+-	call _do_no_page
++	call do_no_page
+ 	jmp 2f
+-1:	call _do_wp_page
++1:	call do_wp_page
+ 2:	addl $8,%esp
+ 	pop %fs
+ 	pop %es
+diff --git a/mm/swap.c b/mm/swap.c
+index 327259b..8b3d89b 100755
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -188,7 +188,7 @@ repeat:
+ 		:"=a" (__res)
+ 		:"0" (0),"i" (LOW_MEM),"c" (PAGING_PAGES),
+ 		"D" (mem_map+PAGING_PAGES-1)
+-		:"di","cx","dx");
++		:);
+ 	if (__res >= HIGH_MEMORY)
+ 		goto repeat;
+ 	if (!__res && swap_out())
+diff --git a/tools/build.c b/tools/build.c
+index 32d2efb..fe4e262 100755
+--- a/tools/build.c
++++ b/tools/build.c
+@@ -31,6 +31,9 @@
+ #include <unistd.h>	/* contains read/write */
+ #include <fcntl.h>
+ 
++#define MAJOR(a) (((unsigned)(a))>>8)
++#define MINOR(a) ((a)&0xff)
++
+ #define MINIX_HEADER 32
+ #define GCC_HEADER 1024
+ 
+@@ -185,8 +188,8 @@ int main(int argc, char ** argv)
+ 		die("Unable to open 'system'");
+ 	if (read(id,buf,GCC_HEADER) != GCC_HEADER)
+ 		die("Unable to read header of 'system'");
+-	if (((long *) buf)[5] != 0)
+-		die("Non-GCC header of 'system'");
++//	if (((long *) buf)[5] != 0)
++//		die("Non-GCC header of 'system'");
+ 	for (i=0 ; (c=read(id,buf,sizeof buf))>0 ; i+=c )
+ 		if (write(1,buf,c)!=c)
+ 			die("Write call failed");
+-- 
+2.17.1
+
