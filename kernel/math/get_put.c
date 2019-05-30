@@ -109,6 +109,7 @@ __asm__("addl %4,%0 ; adcl $0,%1":"=r" (low),"=r" (high) \
 
 void get_BCD(temp_real * tmp, struct info * info, unsigned short code)
 {
+#if 0
 	int k;
 	char * addr;
 	temp_int i;
@@ -126,6 +127,7 @@ void get_BCD(temp_real * tmp, struct info * info, unsigned short code)
 		ADD64((c&0xf), i.a, i.b);
 	}
 	int_to_real(&i,tmp);
+#endif
 }
 
 void put_short_real(const temp_real * tmp,
@@ -218,6 +220,7 @@ __asm__("divl %6 ; xchgl %1,%2 ; divl %6" \
 
 void put_BCD(const temp_real * tmp,struct info * info, unsigned short code)
 {
+#if 0
 	int k,rem;
 	char * addr;
 	temp_int i;
@@ -237,4 +240,5 @@ void put_BCD(const temp_real * tmp,struct info * info, unsigned short code)
 		c += rem<<4;
 		put_fs_byte(c,addr++);
 	}
+#endif
 }

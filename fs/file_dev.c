@@ -16,6 +16,7 @@
 
 int file_read(struct m_inode * inode, struct file * filp, char * buf, int count)
 {
+#if 0
 	int left,chars,nr;
 	struct buffer_head * bh;
 
@@ -43,6 +44,7 @@ int file_read(struct m_inode * inode, struct file * filp, char * buf, int count)
 	}
 	inode->i_atime = CURRENT_TIME;
 	return (count-left)?(count-left):-ERROR;
+#endif
 }
 
 int file_write(struct m_inode * inode, struct file * filp, char * buf, int count)
