@@ -82,13 +82,17 @@ int new_block(int dev)
 	if (!(sb = get_super(dev)))
 		panic("trying to get new block from nonexistant device");
 	j = 8192;
-	for (i=0 ; i<8 ; i++)
-		if (bh=sb->s_zmap[i])
-			if ((j=find_first_zero(bh->b_data))<8192)
+	for (i = 0; i < 8; i++) {
+		bh = sb->s_zmap[i];
+		if (bh) {
+			j=find_first_zero(bh->b_data);
+			if (j < 8192)
 				break;
-	if (i>=8 || !bh || j>=8192)
+		}
+	}
+	if (i >= 8 || !bh || j >= 8192)
 		return 0;
-	if (set_bit(j,bh->b_data))
+	if (set_bit(j, bh->b_data))
 		panic("new_block: bit already set");
 	bh->b_dirt = 1;
 	j += i*8192 + sb->s_firstdatazone-1;
@@ -141,15 +145,21 @@ struct m_inode * new_inode(int dev)
 	struct buffer_head * bh;
 	int i,j;
 
-	if (!(inode=get_empty_inode()))
+	inode=get_empty_inode();
+	if (!inode)
 		return NULL;
-	if (!(sb = get_super(dev)))
+	sb = get_super(dev);
+	if (!sb)
 		panic("new_inode with unknown device");
 	j = 8192;
-	for (i=0 ; i<8 ; i++)
-		if (bh=sb->s_imap[i])
-			if ((j=find_first_zero(bh->b_data))<8192)
+	for (i = 0; i < 8; i++) {
+		bh = sb->s_imap[i];
+		if (bh) {
+			j = find_first_zero(bh->b_data);
+			if (j < 8192)
 				break;
+		}
+	}
 	if (!bh || j >= 8192 || j+i*8192 > sb->s_ninodes) {
 		iput(inode);
 		return NULL;

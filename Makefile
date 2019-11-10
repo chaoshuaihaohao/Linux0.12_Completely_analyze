@@ -13,6 +13,8 @@ LDFLAGS	=-s -x -M  -m elf_i386 -Ttext 0 -e startup_32
 CC	=gcc $(RAMDISK)
 CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
 -m32 -fno-stack-protector
+CFLAGS +=-fno-builtin -Wno-unused -fdiagnostics-color=auto -Wno-main \
+-Wno-dangling-else
 CPP	=cpp -nostdinc -Iinclude
 
 #
@@ -30,25 +32,19 @@ MATH	=kernel/math/math.a
 LIBS	=lib/lib.a
 
 .c.s:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-nostdinc -Iinclude -S -o $*.s $<
 .s.o:
-	$(AS) -c -o $*.o $<
+	@$(AS) -c -o $*.o $<
 .c.o:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-nostdinc -Iinclude -c -o $*.o $<
 
 all:	Image
 
-#Image: boot/bootsect boot/setup tools/system tools/build
-#	tools/build boot/bootsect boot/setup tools/system $(ROOT_DEV) \
-#		$(SWAP_DEV) > Image
-#	sync
-
 Image: boot/bootsect boot/setup tools/system tools/build
-	objcopy -O binary -R .note -R .comment tools/system tools/kernel
-	tools/build boot/bootsect boot/setup tools/kernel $(ROOT_DEV) > Image
-	rm tools/kernel -f
+	tools/build boot/bootsect boot/setup tools/system $(ROOT_DEV) \
+		$(SWAP_DEV) > Image
 	sync
 
 disk: Image
@@ -60,24 +56,14 @@ tools/build: tools/build.c
 
 boot/head.o: boot/head.s
 
-#tools/system:	boot/head.o init/main.o \
-#		$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS)
-#	$(LD) $(LDFLAGS) boot/head.o init/main.o \
-#	$(ARCHIVES) \
-#	$(DRIVERS) \
-#	$(MATH) \
-#	$(LIBS) \
-#	-o tools/system > System.map
-
-tools/system: boot/head.o init/main.o \
+tools/system:	boot/head.o init/main.o \
 		$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS)
 	$(LD) $(LDFLAGS) boot/head.o init/main.o \
 	$(ARCHIVES) \
 	$(DRIVERS) \
 	$(MATH) \
 	$(LIBS) \
-	-o tools/system
-	nm tools/system | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
+	-o tools/system > System.map
 
 kernel/math/math.a:
 	(cd kernel/math; make)
@@ -118,6 +104,7 @@ clean:
 	rm -f Image System.map tmp_make core boot/bootsect boot/setup \
 		boot/bootsect.s boot/setup.s
 	rm -f init/*.o tools/system tools/build boot/*.o
+	rm -f bochsout.txt
 	(cd mm;make clean)
 	(cd fs;make clean)
 	(cd kernel;make clean)

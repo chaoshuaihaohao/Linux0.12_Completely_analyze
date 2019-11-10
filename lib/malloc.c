@@ -144,7 +144,7 @@ void *malloc(unsigned int len)
 	 * allocate a new one.
 	 */
 	if (!bdesc) {
-		char		*cp;
+		char *cp;
 		int		i;
 
 		if (!free_bucket_desc)	
@@ -153,7 +153,7 @@ void *malloc(unsigned int len)
 		free_bucket_desc = bdesc->next;
 		bdesc->refcnt = 0;
 		bdesc->bucket_size = bdir->size;
-		cp = get_free_page();
+		cp = (char *)get_free_page();
 		bdesc->freeptr = cp;
 		bdesc->page = bdesc->freeptr;
 		if (!cp)
@@ -183,15 +183,14 @@ void *malloc(unsigned int len)
  */
 void free_s(void *obj, int size)
 {
-	void		*page;
-	struct _bucket_dir	*bdir;
-	struct bucket_desc	*bdesc, *prev;
+	struct bucket_desc *bdesc, *prev = NULL;
+	struct _bucket_dir *bdir;
+	void *page;
 
 	/* Calculate what page this object lives in */
 	page = (void *)  ((unsigned long) obj & 0xfffff000);
 	/* Now search the buckets looking for that page */
 	for (bdir = bucket_dir; bdir->size; bdir++) {
-		prev = 0;
 		/* If size is zero then this conditional is always false */
 		if (bdir->size < size)
 			continue;

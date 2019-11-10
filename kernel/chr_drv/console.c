@@ -687,11 +687,12 @@ void con_write(struct tty_struct * tty)
 				if (c =='[')  /* Function key */
 				{ state=ESfunckey;
 				  break;
-				}  
-				if (ques=(c=='?'))
+				}
+				ques = (c == '?');
+				if (ques)
 					break;
 			case ESgetpars:
-				if (c==';' && npar<NPAR-1) {
+				if (c == ';' && npar < NPAR-1) {
 					npar++;
 					break;
 				} else if (c>='0' && c<='9') {
@@ -995,9 +996,9 @@ void unblank_screen()
 void console_print(const char * b)
 {
 	int currcons = fg_console;
-	char c;
+	char c = *(b++);
 
-	while (c = *(b++)) {
+	while (c) {
 		if (c == 10) {
 			cr(currcons);
 			lf(currcons);

@@ -46,6 +46,7 @@ static int reset = 0;
 static int seek = 0;
 
 extern unsigned char current_DOR;
+extern void do_fd_request(void);
 
 #define immoutb_p(val,port) \
 __asm__("outb %0,%1\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a" ((char) (val)),"i" (port))
@@ -267,7 +268,7 @@ static void rw_interrupt(void)
 	do_fd_request();
 }
 
-inline void setup_rw_floppy(void)
+static inline void setup_rw_floppy(void)
 {
 	setup_DMA();
 	do_floppy = rw_interrupt;

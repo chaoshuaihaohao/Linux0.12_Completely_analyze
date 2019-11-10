@@ -13,15 +13,17 @@ LDFLAGS	=-s -x
 CC	=gcc
 CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
 	-finline-functions -nostdinc -I../../include -m32 -fno-stack-protector
+CFLAGS +=-fno-builtin -Wno-unused -fdiagnostics-color=auto -Wno-main \
+-Wno-dangling-else
 CPP	=gcc -E -nostdinc -I../../include
 
 .c.s:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-S -o $*.s $<
 .s.o:
-	$(AS) -c -o $*.o $<
+	@$(AS) -c -o $*.o $<
 .c.o:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-c -o $*.o $<
 
 OBJS  = ll_rw_blk.o floppy.o hd.o ramdisk.o

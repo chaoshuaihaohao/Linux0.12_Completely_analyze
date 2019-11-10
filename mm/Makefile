@@ -1,18 +1,20 @@
 CC	=gcc
 CFLAGS	=-O -Wall -fstrength-reduce -fomit-frame-pointer \
 	-finline-functions -nostdinc -I../include -m32 -fno-stack-protector
+CFLAGS +=-fno-builtin -Wno-unused -fdiagnostics-color=auto -Wno-main \
+-Wno-dangling-else
 AS	=as --32
 AR	=ar
 LD	=ld -m elf_i386
 CPP	=gcc -E -nostdinc -I../include
 
 .c.o:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-c -o $*.o $<
 .s.o:
-	$(AS) -o $*.o $<
+	@$(AS) -o $*.o $<
 .c.s:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-S -o $*.s $<
 
 OBJS	= memory.o swap.o page.o

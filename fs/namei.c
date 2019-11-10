@@ -274,7 +274,8 @@ static struct m_inode * get_dir(const char * pathname, struct m_inode * inode)
 		inode = current->pwd;
 		inode->i_count++;
 	}
-	if ((c=get_fs_byte(pathname))=='/') {
+	c= get_fs_byte(pathname);
+	if (c == '/') {
 		iput(inode);
 		inode = current->root;
 		pathname++;
@@ -322,7 +323,8 @@ static struct m_inode * dir_namei(const char * pathname,
 	if (!(dir = get_dir(pathname,base)))
 		return NULL;
 	basename = pathname;
-	while (c=get_fs_byte(pathname++))
+	c=get_fs_byte(pathname++);
+	while (c)
 		if (c=='/')
 			basename=pathname;
 	*namelen = pathname-basename-1;
@@ -398,7 +400,8 @@ int open_namei(const char * pathname, int flag, int mode,
 		flag |= O_WRONLY;
 	mode &= 0777 & ~current->umask;
 	mode |= I_REGULAR;
-	if (!(dir = dir_namei(pathname,&namelen,&basename,NULL)))
+	dir = dir_namei(pathname,&namelen,&basename,NULL);
+	if (!dir)
 		return -ENOENT;
 	if (!namelen) {			/* special case: '/usr/' etc */
 		if (!(flag & (O_ACCMODE|O_CREAT|O_TRUNC))) {

@@ -27,6 +27,9 @@
 #include <asm/io.h>
 
 extern int end;
+extern void invalidate_inodes(int dev);
+extern void put_super(int dev);
+
 struct buffer_head * start_buffer = (struct buffer_head *) &end;
 struct buffer_head * hash_table[NR_HASH];
 static struct buffer_head * free_list;
@@ -81,7 +84,7 @@ int sync_dev(int dev)
 	return 0;
 }
 
-void inline invalidate_buffers(int dev)
+static void inline invalidate_buffers(int dev)
 {
 	int i;
 	struct buffer_head * bh;
@@ -118,7 +121,7 @@ void check_disk_change(int dev)
 		return;
 	if (!floppy_change(dev & 0x03))
 		return;
-	for (i=0 ; i<NR_SUPER ; i++)
+	for (i=0 ; i< NR_SUPER; i++)
 		if (super_block[i].s_dev == dev)
 			put_super(super_block[i].s_dev);
 	invalidate_inodes(dev);
@@ -208,7 +211,8 @@ struct buffer_head * getblk(int dev,int block)
 	struct buffer_head * tmp, * bh;
 
 repeat:
-	if (bh = get_hash_table(dev,block))
+	bh = get_hash_table(dev,block);
+	if (bh)
 		return bh;
 	tmp = free_list;
 	do {
@@ -298,9 +302,10 @@ void bread_page(unsigned long address,int dev,int b[4])
 	struct buffer_head * bh[4];
 	int i;
 
-	for (i=0 ; i<4 ; i++)
+	for (i = 0 ; i < 4; i++)
 		if (b[i]) {
-			if (bh[i] = getblk(dev,b[i]))
+			bh[i] = getblk(dev, b[i]);
+			if (bh[i])
 				if (!bh[i]->b_uptodate)
 					ll_rw_block(READ,bh[i]);
 		} else

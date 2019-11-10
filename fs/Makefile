@@ -4,16 +4,18 @@ CC	=gcc
 LD	=ld -m elf_i386
 CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
 	-fno-defer-pop -I../include -m32 -fno-stack-protector
+CFLAGS +=-fno-builtin -Wno-unused -fdiagnostics-color=auto -Wno-main \
+-Wno-dangling-else
 CPP	=gcc -E -nostdinc -I../include
 
 .c.s:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-S -o $*.s $<
 .c.o:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-c -o $*.o $<
 .s.o:
-	$(AS) -o $*.o $<
+	@$(AS) -o $*.o $<
 
 OBJS=	open.o read_write.o inode.o file_table.o buffer.o super.o \
 	block_dev.o char_dev.o file_dev.o stat.o exec.o pipe.o namei.o \

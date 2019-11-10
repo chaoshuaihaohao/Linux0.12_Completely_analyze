@@ -105,7 +105,8 @@ static struct super_block * read_super(int dev)
 	if (!dev)
 		return NULL;
 	check_disk_change(dev);
-	if (s = get_super(dev))
+	s = get_super(dev);
+	if (s)
 		return s;
 	for (s = 0+super_block ;; s++) {
 		if (s >= NR_SUPER+super_block)
@@ -138,16 +139,20 @@ static struct super_block * read_super(int dev)
 	for (i=0;i<Z_MAP_SLOTS;i++)
 		s->s_zmap[i] = NULL;
 	block=2;
-	for (i=0 ; i < s->s_imap_blocks ; i++)
-		if (s->s_imap[i]=bread(dev,block))
+	for (i=0 ; i < s->s_imap_blocks ; i++) {
+		s->s_imap[i] = bread(dev,block);
+		if (s->s_imap[i])
 			block++;
 		else
 			break;
-	for (i=0 ; i < s->s_zmap_blocks ; i++)
-		if (s->s_zmap[i]=bread(dev,block))
+	}
+	for (i=0 ; i < s->s_zmap_blocks ; i++) {
+		s->s_zmap[i]=bread(dev,block);
+		if (s->s_zmap[i])
 			block++;
 		else
 			break;
+	}
 	if (block != 2+s->s_imap_blocks+s->s_zmap_blocks) {
 		for(i=0;i<I_MAP_SLOTS;i++)
 			brelse(s->s_imap[i]);

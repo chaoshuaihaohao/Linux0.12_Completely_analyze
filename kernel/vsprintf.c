@@ -49,34 +49,41 @@ static char * number(char * str, int num, int base, int size, int precision
 	if (base<2 || base>36)
 		return 0;
 	c = (type & ZEROPAD) ? '0' : ' ' ;
-	if (type&SIGN && num<0) {
-		sign='-';
+	if (type & SIGN && num < 0) {
+		sign = '-';
 		num = -num;
 	} else
-		sign=(type&PLUS) ? '+' : ((type&SPACE) ? ' ' : 0);
-	if (sign) size--;
-	if (type&SPECIAL)
-		if (base==16) size -= 2;
-		else if (base==8) size--;
-	i=0;
-	if (num==0)
-		tmp[i++]='0';
-	else while (num!=0)
-		tmp[i++]=digits[do_div(num,base)];
-	if (i>precision) precision=i;
+		sign = (type & PLUS) ? '+' : ((type & SPACE) ? ' ' : 0);
+	if (sign)
+		size--;
+	if (type & SPECIAL) {
+		if (base == 16)
+			size -= 2;
+		else if (base == 8)
+			size--;
+	}
+	i = 0;
+	if (num == 0)
+		tmp[i++] = '0';
+	else
+		while (num != 0)
+			tmp[i++] = digits[do_div(num, base)];
+	if (i > precision)
+		precision=i;
 	size -= precision;
 	if (!(type&(ZEROPAD+LEFT)))
 		while(size-->0)
 			*str++ = ' ';
 	if (sign)
 		*str++ = sign;
-	if (type&SPECIAL)
+	if (type & SPECIAL) {
 		if (base==8)
 			*str++ = '0';
 		else if (base==16) {
 			*str++ = '0';
 			*str++ = digits[33];
 		}
+	}
 	if (!(type&LEFT))
 		while(size-->0)
 			*str++ = c;

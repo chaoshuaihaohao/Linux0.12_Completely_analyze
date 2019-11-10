@@ -73,7 +73,8 @@ static void free_wait(select_table * p)
 		}
 		if (!*tpp)
 			printk("free_wait: NULL");
-		if (*tpp = p->entry[i].old_task)
+		*tpp = p->entry[i].old_task;
+		if (*tpp)
 			(**tpp).state = 0;
 	}
 	p->nr = 0;
@@ -104,7 +105,8 @@ static int check_in(select_table * wait, struct m_inode * inode)
 {
 	struct tty_struct * tty;
 
-	if (tty = get_tty(inode))
+	tty = get_tty(inode);
+	if (tty)
 		if (!EMPTY(tty->secondary))
 			return 1;
 		else
@@ -121,7 +123,8 @@ static int check_out(select_table * wait, struct m_inode * inode)
 {
 	struct tty_struct * tty;
 
-	if (tty = get_tty(inode))
+	tty = get_tty(inode);
+	if (tty)
 		if (!FULL(tty->write_q))
 			return 1;
 		else
@@ -138,7 +141,8 @@ static int check_ex(select_table * wait, struct m_inode * inode)
 {
 	struct tty_struct * tty;
 
-	if (tty = get_tty(inode))
+	tty = get_tty(inode);
+	if (tty)
 		if (!FULL(tty->write_q))
 			return 0;
 		else

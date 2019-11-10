@@ -119,7 +119,7 @@ void wait_for_keypress(void)
 
 void copy_to_cooked(struct tty_struct * tty)
 {
-	signed char c;
+	unsigned char c;
 
 	if (!(tty->read_q || tty->write_q || tty->secondary)) {
 		printk("copy_to_cooked: missing queues\n\r");
@@ -130,10 +130,10 @@ void copy_to_cooked(struct tty_struct * tty)
 			break;
 		if (FULL(tty->secondary))
 			break;
-		GETCH(tty->read_q,c);
-		if (c==13) {
+		GETCH(tty->read_q, c);
+		if (c == 13) {
 			if (I_CRNL(tty))
-				c=10;
+				c = 10;
 			else if (I_NOCR(tty))
 				continue;
 		} else if (c==10 && I_NLCR(tty))
@@ -262,7 +262,8 @@ int tty_read(unsigned channel, char * buf, int nr)
 {
 	struct tty_struct * tty;
 	struct tty_struct * other_tty = NULL;
-	char c, * b=buf;
+	char * b=buf;
+	unsigned char c;
 	int minimum,time;
 
 	if (channel > 255)
@@ -340,7 +341,8 @@ int tty_write(unsigned channel, char * buf, int nr)
 {
 	static int cr_flag=0;
 	struct tty_struct * tty;
-	char c, *b=buf;
+	char *b=buf;
+	unsigned char c;
 
 	if (channel > 255)
 		return -EIO;
@@ -355,13 +357,13 @@ int tty_write(unsigned channel, char * buf, int nr)
 		if (current->signal & ~current->blocked)
 			break;
 		while (nr>0 && !FULL(tty->write_q)) {
-			c=get_fs_byte(b);
+			c = get_fs_byte(b);
 			if (O_POST(tty)) {
-				if (c=='\r' && O_CRNL(tty))
-					c='\n';
-				else if (c=='\n' && O_NLRET(tty))
-					c='\r';
-				if (c=='\n' && !cr_flag && O_NLCR(tty)) {
+				if (c == '\r' && O_CRNL(tty))
+					c = '\n';
+				else if (c == '\n' && O_NLRET(tty))
+					c = '\r';
+				if (c == '\n' && !cr_flag && O_NLCR(tty)) {
 					cr_flag = 1;
 					PUTCH(13,tty->write_q);
 					continue;

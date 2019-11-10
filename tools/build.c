@@ -35,7 +35,7 @@
 #define MINOR(a) ((a)&0xff)
 
 #define MINIX_HEADER 32
-#define GCC_HEADER 1024
+#define GCC_HEADER (1024+0xc00)
 
 #define SYS_SIZE 0x3000
 
@@ -65,7 +65,7 @@ void usage(void)
 int main(int argc, char ** argv)
 {
 	int i,c,id;
-	char buf[1024];
+	char buf[4096];
 	char major_root, minor_root;
 	char major_swap, minor_swap;
 	struct stat sb;

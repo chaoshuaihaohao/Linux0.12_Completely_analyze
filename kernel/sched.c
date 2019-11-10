@@ -187,7 +187,8 @@ repeat:	schedule();
 	}
 	if (!*p)
 		printk("Warning: *P = NULL\n\r");
-	if (*p = tmp)
+	*p = tmp;
+	if (*p)
 		tmp->state=0;
 }
 

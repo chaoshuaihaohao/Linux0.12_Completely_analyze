@@ -106,56 +106,56 @@ return __res;
 
 static inline int strncmp(const char * cs,const char * ct,int count)
 {
-register int __res __asm__("ax");
-__asm__("cld\n"
-	"1:\tdecl %3\n\t"
-	"js 2f\n\t"
-	"lodsb\n\t"
-	"scasb\n\t"
-	"jne 3f\n\t"
-	"testb %%al,%%al\n\t"
-	"jne 1b\n"
-	"2:\txorl %%eax,%%eax\n\t"
-	"jmp 4f\n"
-	"3:\tmovl $1,%%eax\n\t"
-	"jl 4f\n\t"
-	"negl %%eax\n"
-	"4:"
-	:"=a" (__res):"D" (cs),"S" (ct),"c" (count):);
-return __res;
+	register int __res __asm__("ax");
+	__asm__("cld\n"
+		"1:\tdecl %3\n\t"
+		"js 2f\n\t"
+		"lodsb\n\t"
+		"scasb\n\t"
+		"jne 3f\n\t"
+		"testb %%al,%%al\n\t"
+		"jne 1b\n"
+		"2:\txorl %%eax,%%eax\n\t"
+		"jmp 4f\n"
+		"3:\tmovl $1,%%eax\n\t"
+		"jl 4f\n\t"
+		"negl %%eax\n"
+		"4:"
+		:"=a" (__res):"D" (cs),"S" (ct),"c" (count):);
+	return __res;
 }
 
 static inline char * strchr(const char * s,char c)
 {
-register char * __res __asm__("ax");
-__asm__("cld\n\t"
-	"movb %%al,%%ah\n"
-	"1:\tlodsb\n\t"
-	"cmpb %%ah,%%al\n\t"
-	"je 2f\n\t"
-	"testb %%al,%%al\n\t"
-	"jne 1b\n\t"
-	"movl $1,%1\n"
-	"2:\tmovl %1,%0\n\t"
-	"decl %0"
-	:"=a" (__res):"S" (s),"0" (c):);
-return __res;
+	register char * res __asm__("ax");
+	__asm__("cld\n\t"
+		"movb %%al,%%ah\n"
+		"1:\tlodsb\n\t"
+		"cmpb %%ah,%%al\n\t"
+		"je 2f\n\t"
+		"testb %%al,%%al\n\t"
+		"jne 1b\n\t"
+		"movl $1,%1\n"
+		"2:\tmovl %1,%0\n\t"
+		"decl %0"
+		:"=a" (res):"S" (s),"0" (c):);
+	return res;
 }
 
 static inline char * strrchr(const char * s,char c)
 {
-register char * __res __asm__("dx");
-__asm__("cld\n\t"
-	"movb %%al,%%ah\n"
-	"1:\tlodsb\n\t"
-	"cmpb %%ah,%%al\n\t"
-	"jne 2f\n\t"
-	"movl %%esi,%0\n\t"
-	"decl %0\n"
-	"2:\ttestb %%al,%%al\n\t"
-	"jne 1b"
-	:"=d" (__res):"0" (0),"S" (s),"a" (c):);
-return __res;
+	register char * __res __asm__("dx");
+	__asm__("cld\n\t"
+		"movb %%al,%%ah\n"
+		"1:\tlodsb\n\t"
+		"cmpb %%ah,%%al\n\t"
+		"jne 2f\n\t"
+		"movl %%esi,%0\n\t"
+		"decl %0\n"
+		"2:\ttestb %%al,%%al\n\t"
+		"jne 1b"
+		:"=d" (__res):"0" (0),"S" (s),"a" (c):);
+	return __res;
 }
 
 static inline int strspn(const char * cs, const char * ct)
