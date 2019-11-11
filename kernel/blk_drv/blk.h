@@ -12,7 +12,7 @@
  * buffers when they are in the queue. 64 seems to be too many (easily
  * long pauses in reading when heavy writing/syncing is going on)
  */
-#define NR_REQUEST	32
+#define NR_REQUEST 32
 
 /*
  * Ok, this is an expanded form so that we can use the same

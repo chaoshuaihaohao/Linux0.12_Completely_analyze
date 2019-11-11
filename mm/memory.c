@@ -39,11 +39,13 @@
 #define CODE_SPACE(addr) ((((addr)+4095)&~4095) < \
 current->start_code + current->end_code)
 
+/* The highest addr of physical address */
 unsigned long HIGH_MEMORY = 0;
 
 #define copy_page(from,to) \
 __asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024):)
 
+/* Physical memory map, which page used will be set to 100 */
 unsigned char mem_map [ PAGING_PAGES ] = {0,};
 
 /*
@@ -447,20 +449,20 @@ void mem_init(long start_mem, long end_mem)
 	int i;
 
 	HIGH_MEMORY = end_mem;
-	for (i=0 ; i<PAGING_PAGES ; i++)
+	for (i = 0; i < PAGING_PAGES; i++)
 		mem_map[i] = USED;
 	i = MAP_NR(start_mem);
 	end_mem -= start_mem;
 	end_mem >>= 12;
 	while (end_mem-->0)
-		mem_map[i++]=0;
+		mem_map[i++] = 0;
 }
 
 void show_mem(void)
 {
-	int i,j,k,free=0,total=0;
-	int shared=0;
+	int i, j, k, free = 0, total = 0;
 	unsigned long * pg_tbl;
+	int shared=0;
 
 	printk("Mem-info:\n\r");
 	for(i=0 ; i<PAGING_PAGES ; i++) {

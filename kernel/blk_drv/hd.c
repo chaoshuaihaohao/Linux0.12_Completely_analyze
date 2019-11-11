@@ -26,8 +26,8 @@
 #include "blk.h"
 
 #define CMOS_READ(addr) ({ \
-outb_p(0x80|addr,0x70); \
-inb_p(0x71); \
+	outb_p(0x80|addr,0x70); \
+	inb_p(0x71); \
 })
 
 /* Max read/write errors/sector */
@@ -338,7 +338,7 @@ void do_hd_request(void)
 	INIT_REQUEST;
 	dev = MINOR(CURRENT->dev);
 	block = CURRENT->sector;
-	if (dev >= 5*NR_HD || block+2 > hd[dev].nr_sects) {
+	if (dev >= 5*NR_HD || block + 2 > hd[dev].nr_sects) {
 		end_request(0);
 		goto repeat;
 	}
@@ -357,21 +357,21 @@ void do_hd_request(void)
 	}
 	if (recalibrate) {
 		recalibrate = 0;
-		hd_out(dev,hd_info[CURRENT_DEV].sect,0,0,0,
-			WIN_RESTORE,&recal_intr);
+		hd_out(dev, hd_info[CURRENT_DEV].sect, 0, 0, 0,
+			WIN_RESTORE, &recal_intr);
 		return;
 	}	
 	if (CURRENT->cmd == WRITE) {
-		hd_out(dev,nsect,sec,head,cyl,WIN_WRITE,&write_intr);
-		for(i=0 ; i<10000 && !(r=inb_p(HD_STATUS)&DRQ_STAT) ; i++)
+		hd_out(dev, nsect, sec, head,cyl, WIN_WRITE, &write_intr);
+		for(i=0 ; i < 10000 && !(r = inb_p(HD_STATUS) & DRQ_STAT); i++)
 			/* nothing */ ;
 		if (!r) {
 			bad_rw_intr();
 			goto repeat;
 		}
-		port_write(HD_DATA,CURRENT->buffer,256);
+		port_write(HD_DATA, CURRENT->buffer, 256);
 	} else if (CURRENT->cmd == READ) {
-		hd_out(dev,nsect,sec,head,cyl,WIN_READ,&read_intr);
+		hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);
 	} else
 		panic("unknown hd-command");
 }
@@ -379,7 +379,7 @@ void do_hd_request(void)
 void hd_init(void)
 {
 	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
-	set_intr_gate(0x2E,&hd_interrupt);
-	outb_p(inb_p(0x21)&0xfb,0x21);
-	outb(inb_p(0xA1)&0xbf,0xA1);
+	set_intr_gate(0x2E, &hd_interrupt);
+	outb_p(inb_p(0x21) & 0xfb, 0x21);
+	outb(inb_p(0xA1) & 0xbf, 0xA1);
 }

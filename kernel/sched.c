@@ -418,18 +418,18 @@ int sys_nice(long increment)
 void sched_init(void)
 {
 	int i;
-	struct desc_struct * p;
+	struct desc_struct *p;
 
 	if (sizeof(struct sigaction) != 16)
 		panic("Struct sigaction MUST be 16 bytes");
-	set_tss_desc(gdt+FIRST_TSS_ENTRY,&(init_task.task.tss));
-	set_ldt_desc(gdt+FIRST_LDT_ENTRY,&(init_task.task.ldt));
-	p = gdt+2+FIRST_TSS_ENTRY;
-	for(i=1;i<NR_TASKS;i++) {
+	set_tss_desc(gdt + FIRST_TSS_ENTRY, &(init_task.task.tss));
+	set_ldt_desc(gdt + FIRST_LDT_ENTRY, &(init_task.task.ldt));
+	p = gdt + 2 + FIRST_TSS_ENTRY;
+	for(i = 1; i < NR_TASKS; i++) {
 		task[i] = NULL;
-		p->a=p->b=0;
+		p->a = p->b = 0;
 		p++;
-		p->a=p->b=0;
+		p->a = p->b = 0;
 		p++;
 	}
 /* Clear NT, so that we won't have troubles with that later on */
@@ -439,7 +439,7 @@ void sched_init(void)
 	outb_p(0x36,0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
 	outb_p(LATCH & 0xff , 0x40);	/* LSB */
 	outb(LATCH >> 8 , 0x40);	/* MSB */
-	set_intr_gate(0x20,&timer_interrupt);
-	outb(inb_p(0x21)&~0x01,0x21);
-	set_system_gate(0x80,&system_call);
+	set_intr_gate(0x20, &timer_interrupt);
+	outb(inb_p(0x21) & ~0x01, 0x21);
+	set_system_gate(0x80, &system_call);
 }

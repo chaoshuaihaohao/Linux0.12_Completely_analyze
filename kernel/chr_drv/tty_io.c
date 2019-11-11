@@ -58,19 +58,19 @@ int is_orphaned_pgrp(int pgrp);
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
-#define QUEUES	(3*(MAX_CONSOLES+NR_SERIALS+2*NR_PTYS))
+#define QUEUES	(3 * (MAX_CONSOLES + NR_SERIALS + 2 * NR_PTYS))
 static struct tty_queue tty_queues[QUEUES];
 struct tty_struct tty_table[256];
 
 #define con_queues tty_queues
-#define rs_queues ((3*MAX_CONSOLES) + tty_queues)
-#define mpty_queues ((3*(MAX_CONSOLES+NR_SERIALS)) + tty_queues)
-#define spty_queues ((3*(MAX_CONSOLES+NR_SERIALS+NR_PTYS)) + tty_queues)
+#define rs_queues ((3 * MAX_CONSOLES) + tty_queues)
+#define mpty_queues ((3 * (MAX_CONSOLES + NR_SERIALS)) + tty_queues)
+#define spty_queues ((3 * (MAX_CONSOLES + NR_SERIALS + NR_PTYS)) + tty_queues)
 
 #define con_table tty_table
-#define rs_table (64+tty_table)
-#define mpty_table (128+tty_table)
-#define spty_table (192+tty_table)
+#define rs_table (64 + tty_table)
+#define mpty_table (128 + tty_table)
+#define spty_table (192 + tty_table)
 
 int fg_console = 0;
 
@@ -409,23 +409,23 @@ void tty_init(void)
 {
 	int i;
 
-	for (i=0 ; i < QUEUES ; i++)
-		tty_queues[i] = (struct tty_queue) {0,0,0,0,""};
-	rs_queues[0] = (struct tty_queue) {0x3f8,0,0,0,""};
-	rs_queues[1] = (struct tty_queue) {0x3f8,0,0,0,""};
-	rs_queues[3] = (struct tty_queue) {0x2f8,0,0,0,""};
-	rs_queues[4] = (struct tty_queue) {0x2f8,0,0,0,""};
-	for (i=0 ; i<256 ; i++) {
-		tty_table[i] =  (struct tty_struct) {
-		 	{0, 0, 0, 0, 0, INIT_C_CC},
+	for (i = 0; i < QUEUES; i++)
+		tty_queues[i] = (struct tty_queue){0, 0, 0, 0, ""};
+	rs_queues[0] = (struct tty_queue){0x3f8, 0, 0, 0, ""};
+	rs_queues[1] = (struct tty_queue){0x3f8, 0, 0, 0, ""};
+	rs_queues[3] = (struct tty_queue){0x2f8, 0, 0, 0, ""};
+	rs_queues[4] = (struct tty_queue){0x2f8, 0, 0, 0, ""};
+	for (i = 0; i < 256; i++) {
+		tty_table[i] =  (struct tty_struct){
+			{0, 0, 0, 0, 0, INIT_C_CC},
 			0, 0, 0, NULL, NULL, NULL, NULL
 		};
 	}
 	con_init();
-	for (i = 0 ; i<NR_CONSOLES ; i++) {
+	for (i = 0; i < NR_CONSOLES; i++) {
 		con_table[i] = (struct tty_struct) {
 		 	{ICRNL,		/* change incoming CR to NL */
-			OPOST|ONLCR,	/* change outgoing NL to CRNL */
+			OPOST | ONLCR,	/* change outgoing NL to CRNL */
 			0,
 			IXON | ISIG | ICANON | ECHO | ECHOCTL | ECHOKE,
 			0,		/* console termio */

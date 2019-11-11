@@ -61,8 +61,8 @@
 #define ORIG_Y			(*(unsigned char *)0x90001)
 #define ORIG_VIDEO_PAGE		(*(unsigned short *)0x90004)
 #define ORIG_VIDEO_MODE		((*(unsigned short *)0x90006) & 0xff)
-#define ORIG_VIDEO_COLS 	(((*(unsigned short *)0x90006) & 0xff00) >> 8)
-#define ORIG_VIDEO_LINES	((*(unsigned short *)0x9000e) & 0xff)
+#define ORIG_VIDEO_COLS		(((*(unsigned short *)0x90006) & 0xff00) >> 8)
+#define ORIG_VIDEO_LINES		((*(unsigned short *)0x9000e) & 0xff)
 #define ORIG_VIDEO_EGA_AX	(*(unsigned short *)0x90008)
 #define ORIG_VIDEO_EGA_BX	(*(unsigned short *)0x9000a)
 #define ORIG_VIDEO_EGA_CX	(*(unsigned short *)0x9000c)
@@ -162,13 +162,13 @@ static char * translations[] = {
 #define GRAF_TRANS (translations[1])
 
 /* NOTE! gotoxy thinks x==video_num_columns is ok */
-static inline void gotoxy(int currcons, int new_x,unsigned int new_y)
+static inline void gotoxy(int currcons, int new_x, unsigned int new_y)
 {
 	if (new_x > video_num_columns || new_y >= video_num_lines)
 		return;
 	x = new_x;
 	y = new_y;
-	pos = origin + y*video_size_row + (x<<1);
+	pos = origin + y * video_size_row + (x << 1);
 }
 
 static inline void set_origin(int currcons)
@@ -434,9 +434,9 @@ static inline void set_cursor(int currcons)
 		return;
 	cli();
 	outb_p(14, video_port_reg);
-	outb_p(0xff&((pos-video_mem_base)>>9), video_port_val);
+	outb_p(0xff & ((pos - video_mem_base) >> 9), video_port_val);
 	outb_p(15, video_port_reg);
-	outb_p(0xff&((pos-video_mem_base)>>1), video_port_val);
+	outb_p(0xff & ((pos - video_mem_base) >> 1), video_port_val);
 	sti();
 }
 
@@ -568,8 +568,16 @@ static void restore_cur(int currcons)
 }
 
 
-enum { ESnormal, ESesc, ESsquare, ESgetpars, ESgotpars, ESfunckey, 
-	ESsetterm, ESsetgraph };
+enum {
+	ESnormal,
+	ESesc,
+	ESsquare,
+	ESgetpars,
+	ESgotpars,
+	ESfunckey,
+	ESsetterm,
+	ESsetgraph
+};
 
 void con_write(struct tty_struct * tty)
 {
@@ -847,39 +855,30 @@ void con_init(void)
 	video_page = ORIG_VIDEO_PAGE;
 	video_erase_char = 0x0720;
 	blankcount = blankinterval;
-	
-	if (ORIG_VIDEO_MODE == 7)	/* Is this a monochrome display? */
-	{
+
+	if (ORIG_VIDEO_MODE == 7) {	/* Is this a monochrome display? */
 		video_mem_base = 0xb0000;
 		video_port_reg = 0x3b4;
 		video_port_val = 0x3b5;
-		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10)
-		{
+		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10) {
 			video_type = VIDEO_TYPE_EGAM;
 			video_mem_term = 0xb8000;
 			display_desc = "EGAm";
-		}
-		else
-		{
+		} else {
 			video_type = VIDEO_TYPE_MDA;
 			video_mem_term = 0xb2000;
 			display_desc = "*MDA";
 		}
-	}
-	else				/* If not, it is color. */
-	{
+	} else {	 /* If not, it is color. */
 		can_do_colour = 1;
 		video_mem_base = 0xb8000;
-		video_port_reg	= 0x3d4;
-		video_port_val	= 0x3d5;
-		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10)
-		{
+		video_port_reg = 0x3d4;
+		video_port_val = 0x3d5;
+		if ((ORIG_VIDEO_EGA_BX & 0xff) != 0x10) {
 			video_type = VIDEO_TYPE_EGAC;
 			video_mem_term = 0xc0000;
 			display_desc = "EGAc";
-		}
-		else
-		{
+		} else {
 			video_type = VIDEO_TYPE_CGA;
 			video_mem_term = 0xba000;
 			display_desc = "*CGA";
@@ -894,21 +893,18 @@ void con_init(void)
 	video_memory /= NR_CONSOLES;
 
 	/* Let the user known what kind of display driver we are using */
-	
 	display_ptr = ((char *)video_mem_base) + video_size_row - 8;
-	while (*display_desc)
-	{
+	while (*display_desc) {
 		*display_ptr++ = *display_desc++;
 		display_ptr++;
 	}
-	
-	/* Initialize the variables used for scrolling (mostly EGA/VGA)	*/
-	
+
+	/* Initialize the variables used for scrolling (mostly EGA/VGA) */
 	base = origin = video_mem_start = video_mem_base;
 	term = video_mem_end = base + video_memory;
 	scr_end	= video_mem_start + video_num_lines * video_size_row;
-	top	= 0;
-	bottom	= video_num_lines;
+	top = 0;
+	bottom = video_num_lines;
   	attr = 0x07;
   	def_attr = 0x07;
         restate = state = ESnormal;
@@ -918,20 +914,20 @@ void con_init(void)
 	translate = NORM_TRANS;
         vc_cons[0].vc_bold_attr = -1;
 
-	gotoxy(currcons,ORIG_X,ORIG_Y);
-  	for (currcons = 1; currcons<NR_CONSOLES; currcons++) {
+	gotoxy(currcons, ORIG_X, ORIG_Y);
+	for (currcons = 1; currcons < NR_CONSOLES; currcons++) {
 		vc_cons[currcons] = vc_cons[0];
 		origin = video_mem_start = (base += video_memory);
 		scr_end = origin + video_num_lines * video_size_row;
 		video_mem_end = (term += video_memory);
-		gotoxy(currcons,0,0);
+		gotoxy(currcons, 0, 0);
 	}
 	update_screen();
-	set_trap_gate(0x21,&keyboard_interrupt);
-	outb_p(inb_p(0x21)&0xfd,0x21);
-	a=inb_p(0x61);
-	outb_p(a|0x80,0x61);
-	outb_p(a,0x61);
+	set_trap_gate(0x21, &keyboard_interrupt);
+	outb_p(inb_p(0x21) & 0xfd, 0x21);
+	a = inb_p(0x61);
+	outb_p(a | 0x80, 0x61);
+	outb_p(a, 0x61);
 }
 
 void update_screen(void)

@@ -87,7 +87,7 @@ outb_p(0x80|addr,0x70); \
 inb_p(0x71); \
 })
 
-#define BCD_TO_BIN(val) ((val)=((val)&15) + ((val)>>4)*10)
+#define BCD_TO_BIN(val) ((val) = ((val) & 15) + ((val) >> 4) * 10)
 
 static void time_init(void)
 {
@@ -111,8 +111,11 @@ static void time_init(void)
 	startup_time = kernel_mktime(&time);
 }
 
+/* The machine own memory(Byte) */
 static long memory_end = 0;
+/* The end addr of buffer memory */
 static long buffer_memory_end = 0;
+/* the begain addr of main memory used to page */
 static long main_memory_start = 0;
 static char term[32];
 
@@ -122,7 +125,37 @@ static char * envp_rc[] = { "HOME=/", NULL ,NULL };
 static char * argv[] = { "-/bin/sh",NULL };
 static char * envp[] = { "HOME=/usr/root", NULL, NULL };
 
-struct drive_info { char dummy[32]; } drive_info;
+struct drive_info {
+	char dummy[32];
+} drive_info;
+
+#define KB (1 << 10)	/* 1024;0x400 */
+#define MB (1 << 20)	/* 1024 * 1024;0x100000 */
+
+/*
+ * The memory partition of system
+ *
+ * < kernel routine | high-speed buffer | RAMDISK | main memory >
+ *
+ *
+ */
+static void mem_prepare()
+{
+	memory_end = MB + (EXT_MEM_K * KB);
+	memory_end &= 0xfffff000;
+	if (memory_end > 16 * MB)
+		memory_end = 16 * MB;
+	if (memory_end > 12 * MB)
+		buffer_memory_end = 4 * MB;
+	else if (memory_end > 6 * MB)
+		buffer_memory_end = 2 * MB;
+	else
+		buffer_memory_end = 1 * MB;
+	main_memory_start = buffer_memory_end;
+#ifdef RAMDISK
+	main_memory_start += rd_init(main_memory_start, RAMDISK * KB);
+#endif
+}
 
 void main(void)		/* This really IS void, no error here. */
 {			/* The startup routine assumes (well, ...) this */
@@ -136,21 +169,9 @@ void main(void)		/* This really IS void, no error here. */
 	envp[1] = term;	
 	envp_rc[1] = term;
  	drive_info = DRIVE_INFO;
-	memory_end = (1<<20) + (EXT_MEM_K<<10);
-	memory_end &= 0xfffff000;
-	if (memory_end > 16*1024*1024)
-		memory_end = 16*1024*1024;
-	if (memory_end > 12*1024*1024) 
-		buffer_memory_end = 4*1024*1024;
-	else if (memory_end > 6*1024*1024)
-		buffer_memory_end = 2*1024*1024;
-	else
-		buffer_memory_end = 1*1024*1024;
-	main_memory_start = buffer_memory_end;
-#ifdef RAMDISK
-	main_memory_start += rd_init(main_memory_start, RAMDISK*1024);
-#endif
-	mem_init(main_memory_start,memory_end);
+
+	mem_prepare();
+	mem_init(main_memory_start, memory_end);
 	trap_init();
 	blk_dev_init();
 	chr_dev_init();
@@ -182,7 +203,7 @@ static int printfw(const char *fmt, ...)
 	int i;
 
 	va_start(args, fmt);
-	write(1,printbuf,i=vsprintf(printbuf, fmt, args));
+	write(1, printbuf, i = vsprintf(printbuf, fmt, args));
 	va_end(args);
 	return i;
 }
@@ -191,13 +212,13 @@ void init(void)
 {
 	int pid,i;
 
-	setup((void *) &drive_info);
-	(void) open("/dev/tty1",O_RDWR,0);
-	(void) dup(0);
-	(void) dup(0);
-	printfw("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
-		NR_BUFFERS*BLOCK_SIZE);
-	printfw("Free mem: %d bytes\n\r",memory_end-main_memory_start);
+	setup((void *)&drive_info);
+	(void)open("/dev/tty1", O_RDWR, 0);
+	(void)dup(0);
+	(void)dup(0);
+	printfw("%d buffers = %d bytes buffer space\n\r", NR_BUFFERS,
+		NR_BUFFERS * BLOCK_SIZE);
+	printfw("Free mem: %d bytes\n\r", memory_end - main_memory_start);
 	if (!(pid=fork())) {
 		close(0);
 		if (open("/etc/rc",O_RDONLY,0))

@@ -112,19 +112,42 @@ struct task_struct {
 	long blocked;	/* bitmap of masked signals */
 /* various fields */
 	int exit_code;
-	unsigned long start_code,end_code,end_data,brk,start_stack;
-	long pid,pgrp,session,leader;
-	int	groups[NGROUPS];
+	unsigned long start_code;
+	unsigned long end_code;
+	unsigned long end_data;
+	unsigned long brk;
+	unsigned long start_stack;
+	long pid;
+	long pgrp;
+	long session;
+	long leader;
+	int groups[NGROUPS];
 	/* 
 	 * pointers to parent process, youngest child, younger sibling,
 	 * older sibling, respectively.  (p->father can be replaced with 
 	 * p->p_pptr->pid)
 	 */
-	struct task_struct	*p_pptr, *p_cptr, *p_ysptr, *p_osptr;
-	unsigned short uid,euid,suid;
-	unsigned short gid,egid,sgid;
-	unsigned long timeout,alarm;
-	long utime,stime,cutime,cstime,start_time;
+	struct task_struct *p_pptr;
+	struct task_struct *p_cptr;
+	struct task_struct *p_ysptr;
+	struct task_struct *p_osptr;
+
+	unsigned short uid;
+	unsigned short euid;
+	unsigned short suid;
+	unsigned short gid;
+	unsigned short egid;
+	unsigned short sgid;
+
+	unsigned long timeout;
+	unsigned long alarm;
+
+	long utime;
+	long stime;
+	long cutime;
+	long cstime;
+	long start_time;
+
 	struct rlimit rlim[RLIM_NLIMITS]; 
 	unsigned int flags;	/* per process flags, defined below */
 	unsigned short used_math;
