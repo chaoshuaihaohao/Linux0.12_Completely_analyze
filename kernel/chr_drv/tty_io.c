@@ -58,6 +58,7 @@ int is_orphaned_pgrp(int pgrp);
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+/* QUEUES are the maximum number(54) of buffer QUEUES used by tty terminals */
 #define QUEUES	(3 * (MAX_CONSOLES + NR_SERIALS + 2 * NR_PTYS))
 static struct tty_queue tty_queues[QUEUES];
 struct tty_struct tty_table[256];
@@ -437,50 +438,56 @@ void tty_init(void)
 			con_queues+0+i*3,con_queues+1+i*3,con_queues+2+i*3
 		};
 	}
-	for (i = 0 ; i<NR_SERIALS ; i++) {
+	for (i = 0 ; i < NR_SERIALS ; i++) {
 		rs_table[i] = (struct tty_struct) {
 			{0, /* no translation */
-			0,  /* no translation */
-			B2400 | CS8,
-			0,
-			0,
-			INIT_C_CC},
+			 0,  /* no translation */
+			 B2400 | CS8,
+			 0,
+			 0,
+			 INIT_C_CC},
 			0,
 			0,
 			0,
 			rs_write,
-			rs_queues+0+i*3,rs_queues+1+i*3,rs_queues+2+i*3
+			rs_queues + 0 + i * 3,
+			rs_queues + 1 + i * 3,
+			rs_queues + 2 + i * 3
 		};
 	}
 	for (i = 0 ; i<NR_PTYS ; i++) {
 		mpty_table[i] = (struct tty_struct) {
 			{0, /* no translation */
-			0,  /* no translation */
-			B9600 | CS8,
-			0,
-			0,
-			INIT_C_CC},
+			 0,  /* no translation */
+			 B9600 | CS8,
+			 0,
+			 0,
+			 INIT_C_CC},
 			0,
 			0,
 			0,
 			mpty_write,
-			mpty_queues+0+i*3,mpty_queues+1+i*3,mpty_queues+2+i*3
+			mpty_queues + 0 + i * 3,
+			mpty_queues + 1 + i * 3,
+			mpty_queues + 2 + i * 3
 		};
 		spty_table[i] = (struct tty_struct) {
 			{0, /* no translation */
-			0,  /* no translation */
-			B9600 | CS8,
-			IXON | ISIG | ICANON,
-			0,
-			INIT_C_CC},
+			 0,  /* no translation */
+			 B9600 | CS8,
+			 IXON | ISIG | ICANON,
+			 0,
+			 INIT_C_CC},
 			0,
 			0,
 			0,
 			spty_write,
-			spty_queues+0+i*3,spty_queues+1+i*3,spty_queues+2+i*3
+			spty_queues + 0 + i * 3,
+			spty_queues + 1 + i * 3,
+			spty_queues + 2 + i * 3
 		};
 	}
 	rs_init();
-	printk("%d virtual consoles\n\r",NR_CONSOLES);
-	printk("%d pty's\n\r",NR_PTYS);
+	printk("%d virtual consoles\n\r", NR_CONSOLES);
+	printk("%d pty's\n\r", NR_PTYS);
 }

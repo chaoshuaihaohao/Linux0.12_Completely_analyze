@@ -19,6 +19,12 @@ __asm__ ("movl %%esp,%%eax\n\t" \
 
 #define iret() __asm__ ("iret"::)
 
+/*
+ * edx + eax make up the gate descriptor,
+ * "a" means ax register; d" means dx register;
+ * gate_addr + 4:edx = addr(high 16bits) , (short) (0x8000 + (dpl << 13) + (type << 8));
+ * gate_addr    :eax = 0x0008 , addr(low 16bits);
+ */
 #define _set_gate(gate_addr, type, dpl, addr) \
 __asm__ ("movw %%dx,%%ax\n\t" \
 	 "movw %0,%%dx\n\t" \
@@ -28,7 +34,8 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 	 : "i" ((short) (0x8000 + (dpl << 13) + (type << 8))), \
 	   "o" (*((char *)(gate_addr))), \
 	   "o" (*(4 + (char *)(gate_addr))), \
-	   "d" ((char *)(addr)), "a" (0x00080000))
+	   "d" ((char *)(addr)), \
+	   "a" (0x00080000))
 
 #define set_intr_gate(n,addr) \
 	_set_gate(&idt[n], 14, 0, addr)

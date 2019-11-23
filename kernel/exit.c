@@ -266,9 +266,9 @@ volatile void do_exit(long code)
 	struct task_struct *p;
 	int i;
 
-	free_page_tables(get_base(current->ldt[1]),get_limit(0x0f));
-	free_page_tables(get_base(current->ldt[2]),get_limit(0x17));
-	for (i=0 ; i<NR_OPEN ; i++)
+	free_page_tables(get_base(current->ldt[1]), get_limit(0x0f));
+	free_page_tables(get_base(current->ldt[2]), get_limit(0x17));
+	for (i = 0; i < NR_OPEN; i++)
 		if (current->filp[i])
 			sys_close(i);
 	iput(current->pwd);
@@ -294,11 +294,11 @@ volatile void do_exit(long code)
 	    (current->p_pptr->session == current->session) &&
 	    is_orphaned_pgrp(current->pgrp) &&
 	    has_stopped_jobs(current->pgrp)) {
-		kill_pg(current->pgrp,SIGHUP,1);
-		kill_pg(current->pgrp,SIGCONT,1);
+		kill_pg(current->pgrp, SIGHUP, 1);
+		kill_pg(current->pgrp, SIGCONT, 1);
 	}
 	/* Let father know we died */
-	current->p_pptr->signal |= (1<<(SIGCHLD-1));
+	current->p_pptr->signal |= (1 << (SIGCHLD - 1));
 	
 	/*
 	 * This loop does two things:
@@ -313,7 +313,7 @@ volatile void do_exit(long code)
 		while (1) {
 			p->p_pptr = task[1];
 			if (p->state == TASK_ZOMBIE)
-				task[1]->signal |= (1<<(SIGCHLD-1));
+				task[1]->signal |= (1 << (SIGCHLD - 1));
 			/*
 			 * process group orphan check
 			 * Case ii: Our child is in a different pgrp 
@@ -348,12 +348,12 @@ volatile void do_exit(long code)
 
 		if (current->tty >= 0) {
 			tty = TTY_TABLE(current->tty);
-			if (tty->pgrp>0)
+			if (tty->pgrp > 0)
 				kill_pg(tty->pgrp, SIGHUP, 1);
 			tty->pgrp = 0;
 			tty->session = 0;
 		}
-	 	for (p = &LAST_TASK ; p > &FIRST_TASK ; --p)
+		for (p = &LAST_TASK; p > &FIRST_TASK; --p)
 			if ((*p)->session == current->session)
 				(*p)->tty = -1;
 	}

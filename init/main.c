@@ -68,12 +68,12 @@ static int sprintf(char * str, const char *fmt, ...)
 /*
  * This is set up by the setup-routine at boot-time
  */
-#define EXT_MEM_K (*(unsigned short *)0x90002)
-#define CON_ROWS ((*(unsigned short *)0x9000e) & 0xff)
-#define CON_COLS (((*(unsigned short *)0x9000e) & 0xff00) >> 8)
-#define DRIVE_INFO (*(struct drive_info *)0x90080)
-#define ORIG_ROOT_DEV (*(unsigned short *)0x901FC)
-#define ORIG_SWAP_DEV (*(unsigned short *)0x901FA)
+#define EXT_MEM_K	(*(unsigned short *)0x90002)
+#define CON_ROWS	((*(unsigned short *)0x9000e) & 0xff)
+#define CON_COLS	(((*(unsigned short *)0x9000e) & 0xff00) >> 8)
+#define DRIVE_INFO	(*(struct drive_info *)0x90080)
+#define ORIG_ROOT_DEV	(*(unsigned short *)0x901FC)
+#define ORIG_SWAP_DEV	(*(unsigned short *)0x901FA)
 
 /*
  * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
@@ -83,8 +83,8 @@ static int sprintf(char * str, const char *fmt, ...)
  */
 
 #define CMOS_READ(addr) ({ \
-outb_p(0x80|addr,0x70); \
-inb_p(0x71); \
+	outb_p(0x80 | addr, 0x70); \
+	inb_p(0x71); \
 })
 
 #define BCD_TO_BIN(val) ((val) = ((val) & 15) + ((val) >> 4) * 10)
