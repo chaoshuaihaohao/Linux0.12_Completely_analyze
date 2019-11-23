@@ -19,6 +19,7 @@
 
 extern void write_verify(unsigned long address);
 
+/* The newest process id */
 long last_pid=0;
 
 void verify_area(void * addr,int size)
@@ -36,13 +37,21 @@ void verify_area(void * addr,int size)
 	}
 }
 
-int copy_mem(int nr,struct task_struct * p)
+/*
+ * copy_mem() : copy the memory page
+ *
+ * arg
+ * nr : the new task id
+ * p  : the pointer to new task
+ *
+ */
+int copy_mem(int nr, struct task_struct * p)
 {
-	unsigned long old_data_base,new_data_base,data_limit;
-	unsigned long old_code_base,new_code_base,code_limit;
+	unsigned long old_data_base, new_data_base, data_limit;
+	unsigned long old_code_base, new_code_base, code_limit;
 
-	code_limit=get_limit(0x0f);
-	data_limit=get_limit(0x17);
+	code_limit = get_limit(0x0f);
+	data_limit = get_limit(0x17);
 	old_code_base = get_base(current->ldt[1]);
 	old_data_base = get_base(current->ldt[2]);
 	if (old_data_base != old_code_base)
@@ -51,10 +60,10 @@ int copy_mem(int nr,struct task_struct * p)
 		panic("Bad data_limit");
 	new_data_base = new_code_base = nr * TASK_SIZE;
 	p->start_code = new_code_base;
-	set_base(p->ldt[1],new_code_base);
-	set_base(p->ldt[2],new_data_base);
-	if (copy_page_tables(old_data_base,new_data_base,data_limit)) {
-		free_page_tables(new_data_base,data_limit);
+	set_base(p->ldt[1], new_code_base);
+	set_base(p->ldt[2], new_data_base);
+	if (copy_page_tables(old_data_base, new_data_base, data_limit)) {
+		free_page_tables(new_data_base, data_limit);
 		return -ENOMEM;
 	}
 	return 0;
@@ -65,16 +74,16 @@ int copy_mem(int nr,struct task_struct * p)
  * information (task[nr]) and sets up the necessary registers. It
  * also copies the data segment in it's entirety.
  */
-int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
-		long ebx,long ecx,long edx, long orig_eax, 
-		long fs,long es,long ds,
-		long eip,long cs,long eflags,long esp,long ss)
+int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
+		long ebx, long ecx, long edx, long orig_eax,
+		long fs, long es, long ds,
+		long eip, long cs, long eflags, long esp, long ss)
 {
 	struct task_struct *p;
-	int i;
 	struct file *f;
+	int i;
 
-	p = (struct task_struct *) get_free_page();
+	p = (struct task_struct *)get_free_page();
 	if (!p)
 		return -EAGAIN;
 	task[nr] = p;
@@ -111,9 +120,9 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->tss.trace_bitmap = 0x80000000;
 	if (last_task_used_math == current)
 		__asm__("clts ; fnsave %0 ; frstor %0"::"m" (p->tss.i387));
-	if (copy_mem(nr,p)) {
+	if (copy_mem(nr, p)) {
 		task[nr] = NULL;
-		free_page((long) p);
+		free_page((long)p);
 		return -EAGAIN;
 	}
 	for (i = 0; i < NR_OPEN; i++) {
@@ -146,13 +155,14 @@ int find_empty_process(void)
 {
 	int i;
 
-	repeat:
-		if ((++last_pid)<0) last_pid=1;
-		for(i=0 ; i<NR_TASKS ; i++)
-			if (task[i] && ((task[i]->pid == last_pid) ||
-				        (task[i]->pgrp == last_pid)))
-				goto repeat;
-	for(i=1 ; i<NR_TASKS ; i++)
+repeat:
+	if ((++last_pid) < 0)
+		last_pid = 1;
+	for(i = 0; i < NR_TASKS; i++)
+		if (task[i] && ((task[i]->pid == last_pid) ||
+			(task[i]->pgrp == last_pid)))
+			goto repeat;
+	for(i = 1; i < NR_TASKS; i++)
 		if (!task[i])
 			return i;
 	return -EAGAIN;

@@ -941,7 +941,7 @@ void update_screen(void)
 void sysbeepstop(void)
 {
 	/* disable counter 2 */
-	outb(inb_p(0x61)&0xFC, 0x61);
+	outb(inb_p(0x61) & 0xFC, 0x61);
 }
 
 int beepcount = 0;

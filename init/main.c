@@ -20,10 +20,10 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
-/*static inline*/ _syscall0(int,fork)
-/*static inline*/ _syscall0(int,pause)
-/*static inline*/ _syscall1(int,setup,void *,BIOS)
-/*static inline*/ _syscall0(int,sync)
+/*static*/ inline _syscall0(int,fork)
+/*static*/ inline _syscall0(int,pause)
+/*static*/ inline _syscall1(int,setup,void *,BIOS)
+/*static*/ inline _syscall0(int,sync)
 
 #include <linux/tty.h>
 #include <linux/sched.h>
@@ -219,9 +219,9 @@ void init(void)
 	printfw("%d buffers = %d bytes buffer space\n\r", NR_BUFFERS,
 		NR_BUFFERS * BLOCK_SIZE);
 	printfw("Free mem: %d bytes\n\r", memory_end - main_memory_start);
-	if (!(pid=fork())) {
+	if (!(pid = fork())) {
 		close(0);
-		if (open("/etc/rc",O_RDONLY,0))
+		if (open("/etc/rc", O_RDONLY, 0))
 			_exit(1);
 		execve("/bin/sh",argv_rc,envp_rc);
 		_exit(2);
@@ -230,16 +230,16 @@ void init(void)
 		while (pid != wait(&i))
 			/* nothing */;
 	while (1) {
-		if ((pid=fork())<0) {
+		if (( pid = fork()) < 0) {
 			printfw("Fork failed in init\r\n");
 			continue;
 		}
 		if (!pid) {
 			close(0);close(1);close(2);
 			setsid();
-			(void) open("/dev/tty1",O_RDWR,0);
-			(void) dup(0);
-			(void) dup(0);
+			(void)open("/dev/tty1",O_RDWR,0);
+			(void)dup(0);
+			(void)dup(0);
 			_exit(execve("/bin/sh",argv,envp));
 		}
 		while (1)
