@@ -66,8 +66,10 @@ union task_union {
 
 static union task_union init_task = {INIT_TASK,};
 
-unsigned long volatile jiffies=0;
-unsigned long startup_time=0;
+unsigned long volatile jiffies = 0;
+
+/* The time of start the PC */
+unsigned long startup_time = 0;
 int jiffies_offset = 0;		/* # clock ticks to add to get "true
 				   time".  Should always be less than
 				   1 second's worth.  For time fanatics
@@ -417,8 +419,8 @@ int sys_nice(long increment)
 
 void sched_init(void)
 {
-	int i;
 	struct desc_struct *p;
+	int i;
 
 	if (sizeof(struct sigaction) != 16)
 		panic("Struct sigaction MUST be 16 bytes");

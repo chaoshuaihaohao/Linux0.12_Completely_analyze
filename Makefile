@@ -123,11 +123,11 @@ dep:
 	(cd mm; make dep)
 
 ### Dependencies:
-init/main.o : init/main.c include/unistd.h include/sys/stat.h \
-  include/sys/types.h include/sys/time.h include/time.h include/sys/times.h \
-  include/sys/utsname.h include/sys/param.h include/sys/resource.h \
-  include/utime.h include/linux/tty.h include/termios.h include/linux/sched.h \
-  include/linux/head.h include/linux/fs.h include/linux/mm.h \
-  include/linux/kernel.h include/signal.h include/asm/system.h \
-  include/asm/io.h include/stddef.h include/stdarg.h include/fcntl.h \
-  include/string.h 
+init/main.o: init/main.c include/unistd.h include/sys/stat.h \
+ include/sys/types.h include/sys/time.h include/time.h \
+ include/sys/times.h include/sys/utsname.h include/sys/param.h \
+ include/sys/resource.h include/utime.h include/linux/tty.h \
+ include/termios.h include/linux/sched.h include/linux/head.h \
+ include/linux/fs.h include/linux/mm.h include/linux/kernel.h \
+ include/signal.h include/asm/system.h include/asm/io.h include/stddef.h \
+ include/stdarg.h include/fcntl.h include/string.h

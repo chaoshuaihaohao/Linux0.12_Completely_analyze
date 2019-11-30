@@ -20,10 +20,10 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
-/*static*/ inline _syscall0(int,fork)
-/*static*/ inline _syscall0(int,pause)
-/*static*/ inline _syscall1(int,setup,void *,BIOS)
-/*static*/ inline _syscall0(int,sync)
+/*static*/ inline _syscall0(int, fork)
+/*static*/ inline _syscall0(int, pause)
+/*static*/ inline _syscall1(int, setup, void *, BIOS)
+/*static*/ inline _syscall0(int, sync)
 
 #include <linux/tty.h>
 #include <linux/sched.h>
@@ -119,11 +119,11 @@ static long buffer_memory_end = 0;
 static long main_memory_start = 0;
 static char term[32];
 
-static char * argv_rc[] = { "/bin/sh", NULL };
-static char * envp_rc[] = { "HOME=/", NULL ,NULL };
+static char *argv_rc[] = { "/bin/sh", NULL };
+static char *envp_rc[] = { "HOME=/", NULL, NULL };
 
-static char * argv[] = { "-/bin/sh",NULL };
-static char * envp[] = { "HOME=/usr/root", NULL, NULL };
+static char *argv[] = { "-/bin/sh", NULL };
+static char *envp[] = { "HOME=/usr/root", NULL, NULL };
 
 struct drive_info {
 	char dummy[32];
@@ -210,7 +210,7 @@ static int printfw(const char *fmt, ...)
 
 void init(void)
 {
-	int pid,i;
+	int pid, i;
 
 	setup((void *)&drive_info);
 	(void)open("/dev/tty1", O_RDWR, 0);
@@ -223,29 +223,30 @@ void init(void)
 		close(0);
 		if (open("/etc/rc", O_RDONLY, 0))
 			_exit(1);
-		execve("/bin/sh",argv_rc,envp_rc);
+		execve("/bin/sh", argv_rc, envp_rc);
 		_exit(2);
 	}
-	if (pid>0)
+	if (pid > 0)
 		while (pid != wait(&i))
 			/* nothing */;
 	while (1) {
-		if (( pid = fork()) < 0) {
+		pid = fork();
+		if (pid < 0) {
 			printfw("Fork failed in init\r\n");
 			continue;
 		}
 		if (!pid) {
 			close(0);close(1);close(2);
 			setsid();
-			(void)open("/dev/tty1",O_RDWR,0);
+			(void)open("/dev/tty1", O_RDWR, 0);
 			(void)dup(0);
 			(void)dup(0);
-			_exit(execve("/bin/sh",argv,envp));
+			_exit(execve("/bin/sh", argv, envp));
 		}
 		while (1)
 			if (pid == wait(&i))
 				break;
-		printfw("\n\rchild %d died with code %04x\n\r",pid,i);
+		printfw("\n\rchild %d died with code %04x\n\r", pid, i);
 		sync();
 	}
 	_exit(0);	/* NOTE! _exit, not exit() */

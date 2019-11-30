@@ -60,7 +60,9 @@ int is_orphaned_pgrp(int pgrp);
 
 /* QUEUES are the maximum number(54) of buffer QUEUES used by tty terminals */
 #define QUEUES	(3 * (MAX_CONSOLES + NR_SERIALS + 2 * NR_PTYS))
+
 static struct tty_queue tty_queues[QUEUES];
+
 struct tty_struct tty_table[256];
 
 #define con_queues tty_queues
@@ -178,8 +180,8 @@ void copy_to_cooked(struct tty_struct * tty)
 		}
 		if (I_IXON(tty)) {
 			if ((STOP_CHAR(tty) != _POSIX_VDISABLE) &&
-			    (c==STOP_CHAR(tty))) {
-				tty->stopped=1;
+			    (c == STOP_CHAR(tty))) {
+				tty->stopped = 1;
 				tty->write(tty);
 				continue;
 			}
@@ -197,34 +199,34 @@ void copy_to_cooked(struct tty_struct * tty)
 				continue;
 			}
 			if ((QUIT_CHAR(tty) != _POSIX_VDISABLE) &&
-			    (c==QUIT_CHAR(tty))) {
+			    (c == QUIT_CHAR(tty))) {
 				kill_pg(tty->pgrp, SIGQUIT, 1);
 				continue;
 			}
 			if ((SUSPEND_CHAR(tty) != _POSIX_VDISABLE) &&
-			    (c==SUSPEND_CHAR(tty))) {
+			    (c == SUSPEND_CHAR(tty))) {
 				if (!is_orphaned_pgrp(tty->pgrp))
 					kill_pg(tty->pgrp, SIGTSTP, 1);
 				continue;
 			}
 		}
-		if (c==10 || (EOF_CHAR(tty) != _POSIX_VDISABLE &&
-			      c==EOF_CHAR(tty)))
+		if (c == 10 || (EOF_CHAR(tty) != _POSIX_VDISABLE &&
+		    c == EOF_CHAR(tty)))
 			tty->secondary->data++;
 		if (L_ECHO(tty)) {
-			if (c==10) {
-				PUTCH(10,tty->write_q);
-				PUTCH(13,tty->write_q);
-			} else if (c<32) {
+			if (c == 10) {
+				PUTCH(10, tty->write_q);
+				PUTCH(13, tty->write_q);
+			} else if (c < 32) {
 				if (L_ECHOCTL(tty)) {
-					PUTCH('^',tty->write_q);
-					PUTCH(c+64,tty->write_q);
+					PUTCH('^', tty->write_q);
+					PUTCH(c + 64, tty->write_q);
 				}
 			} else
-				PUTCH(c,tty->write_q);
+				PUTCH(c, tty->write_q);
 			tty->write(tty);
 		}
-		PUTCH(c,tty->secondary);
+		PUTCH(c, tty->secondary);
 	}
 	wake_up(&tty->secondary->proc_list);
 }
@@ -406,7 +408,7 @@ void chr_dev_init(void)
 {
 }
 
-void tty_init(void)
+static void tty_queue_init()
 {
 	int i;
 
@@ -416,13 +418,24 @@ void tty_init(void)
 	rs_queues[1] = (struct tty_queue){0x3f8, 0, 0, 0, ""};
 	rs_queues[3] = (struct tty_queue){0x2f8, 0, 0, 0, ""};
 	rs_queues[4] = (struct tty_queue){0x2f8, 0, 0, 0, ""};
+}
+
+static void tty_table_init()
+{
+	int i;
+
 	for (i = 0; i < 256; i++) {
 		tty_table[i] =  (struct tty_struct){
 			{0, 0, 0, 0, 0, INIT_C_CC},
 			0, 0, 0, NULL, NULL, NULL, NULL
 		};
 	}
-	con_init();
+}
+
+static void con_table_init()
+{
+	int i;
+
 	for (i = 0; i < NR_CONSOLES; i++) {
 		con_table[i] = (struct tty_struct) {
 		 	{ICRNL,		/* change incoming CR to NL */
@@ -435,10 +448,18 @@ void tty_init(void)
 			0,			/* initial session */
 			0,			/* initial stopped */
 			con_write,
-			con_queues+0+i*3,con_queues+1+i*3,con_queues+2+i*3
+			con_queues + 0 + i * 3,
+			con_queues + 1 + i * 3,
+			con_queues + 2 + i * 3
 		};
 	}
-	for (i = 0 ; i < NR_SERIALS ; i++) {
+}
+
+static void rs_table_init()
+{
+	int i;
+
+	for (i = 0; i < NR_SERIALS; i++) {
 		rs_table[i] = (struct tty_struct) {
 			{0, /* no translation */
 			 0,  /* no translation */
@@ -455,7 +476,13 @@ void tty_init(void)
 			rs_queues + 2 + i * 3
 		};
 	}
-	for (i = 0 ; i<NR_PTYS ; i++) {
+}
+
+static void mpty_spty_table_init()
+{
+	int i;
+
+	for (i = 0; i < NR_PTYS; i++) {
 		mpty_table[i] = (struct tty_struct) {
 			{0, /* no translation */
 			 0,  /* no translation */
@@ -487,6 +514,25 @@ void tty_init(void)
 			spty_queues + 2 + i * 3
 		};
 	}
+}
+
+static void tty_table_config()
+{
+	con_table_init();
+	rs_table_init();
+	mpty_spty_table_init();
+}
+
+void tty_init(void)
+{
+	int i;
+
+	tty_queue_init();
+	tty_table_init();
+	con_init();
+
+	tty_table_config();
+
 	rs_init();
 	printk("%d virtual consoles\n\r", NR_CONSOLES);
 	printk("%d pty's\n\r", NR_PTYS);
