@@ -30,8 +30,8 @@
 
 void buffer_init(long buffer_end);
 
-#define MAJOR(a) (((unsigned)(a))>>8)
-#define MINOR(a) ((a)&0xff)
+#define MAJOR(a) (((unsigned)(a)) >> 8)
+#define MINOR(a) ((a) & 0xff)
 
 #define NAME_LEN 14
 #define ROOT_INO 1
@@ -123,7 +123,7 @@ struct file {
 	unsigned short f_mode;
 	unsigned short f_flags;
 	unsigned short f_count;
-	struct m_inode * f_inode;
+	struct m_inode *f_inode;
 	off_t f_pos;
 };
 
@@ -137,13 +137,13 @@ struct super_block {
 	unsigned long s_max_size;
 	unsigned short s_magic;
 /* These are only in memory */
-	struct buffer_head * s_imap[8];
-	struct buffer_head * s_zmap[8];
+	struct buffer_head *s_imap[8];
+	struct buffer_head *s_zmap[8];
 	unsigned short s_dev;
-	struct m_inode * s_isup;
-	struct m_inode * s_imount;
+	struct m_inode *s_isup;
+	struct m_inode *s_imount;
 	unsigned long s_time;
-	struct task_struct * s_wait;
+	struct task_struct *s_wait;
 	unsigned char s_lock;
 	unsigned char s_rd_only;
 	unsigned char s_dirt;

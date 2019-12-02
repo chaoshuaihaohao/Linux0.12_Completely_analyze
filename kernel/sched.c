@@ -201,7 +201,7 @@ void interruptible_sleep_on(struct task_struct **p)
 
 void sleep_on(struct task_struct **p)
 {
-	__sleep_on(p,TASK_UNINTERRUPTIBLE);
+	__sleep_on(p, TASK_UNINTERRUPTIBLE);
 }
 
 void wake_up(struct task_struct **p)

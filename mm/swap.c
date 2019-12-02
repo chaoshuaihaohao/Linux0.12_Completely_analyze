@@ -199,7 +199,7 @@ repeat:
 void init_swapping(void)
 {
 	extern int *blk_size[];
-	int swap_size,i,j;
+	int swap_size, i, j;
 
 	if (!SWAP_DEV)
 		return;
@@ -211,29 +211,29 @@ void init_swapping(void)
 	if (!swap_size)
 		return;
 	if (swap_size < 100) {
-		printk("Swap device too small (%d blocks)\n\r",swap_size);
+		printk("Swap device too small (%d blocks)\n\r", swap_size);
 		return;
 	}
 	swap_size >>= 2;
 	if (swap_size > SWAP_BITS)
 		swap_size = SWAP_BITS;
-	swap_bitmap = (char *) get_free_page();
+	swap_bitmap = (char *)get_free_page();
 	if (!swap_bitmap) {
 		printk("Unable to start swapping: out of memory :-)\n\r");
 		return;
 	}
-	read_swap_page(0,swap_bitmap);
-	if (strncmp("SWAP-SPACE",swap_bitmap+4086,10)) {
+	read_swap_page(0, swap_bitmap);
+	if (strncmp("SWAP-SPACE", swap_bitmap + 4086, 10)) {
 		printk("Unable to find swap-space signature\n\r");
-		free_page((long) swap_bitmap);
+		free_page((long)swap_bitmap);
 		swap_bitmap = NULL;
 		return;
 	}
-	memset(swap_bitmap+4086,0,10);
-	for (i = 0 ; i < SWAP_BITS ; i++) {
+	memset(swap_bitmap + 4086, 0, 10);
+	for (i = 0; i < SWAP_BITS; i++) {
 		if (i == 1)
 			i = swap_size;
-		if (bit(swap_bitmap,i)) {
+		if (bit(swap_bitmap, i)) {
 			printk("Bad swap-space bit-map\n\r");
 			free_page((long) swap_bitmap);
 			swap_bitmap = NULL;
@@ -241,13 +241,13 @@ void init_swapping(void)
 		}
 	}
 	j = 0;
-	for (i = 1 ; i < swap_size ; i++)
-		if (bit(swap_bitmap,i))
+	for (i = 1; i < swap_size; i++)
+		if (bit(swap_bitmap, i))
 			j++;
 	if (!j) {
-		free_page((long) swap_bitmap);
+		free_page((long)swap_bitmap);
 		swap_bitmap = NULL;
 		return;
 	}
-	printk("Swap device ok: %d pages (%d bytes) swap-space\n\r",j,j*4096);
+	printk("Swap device ok: %d pages (%d bytes) swap-space\n\r", j, j * 4096);
 }

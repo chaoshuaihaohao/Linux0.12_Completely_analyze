@@ -36,7 +36,7 @@ static struct buffer_head * free_list;
 static struct task_struct * buffer_wait = NULL;
 int NR_BUFFERS = 0;
 
-static inline void wait_on_buffer(struct buffer_head * bh)
+static inline void wait_on_buffer(struct buffer_head *bh)
 {
 	cli();
 	while (bh->b_lock)
@@ -87,10 +87,10 @@ int sync_dev(int dev)
 static void inline invalidate_buffers(int dev)
 {
 	int i;
-	struct buffer_head * bh;
+	struct buffer_head *bh;
 
 	bh = start_buffer;
-	for (i=0 ; i<NR_BUFFERS ; i++,bh++) {
+	for (i = 0; i < NR_BUFFERS; i++, bh++) {
 		if (bh->b_dev != dev)
 			continue;
 		wait_on_buffer(bh);
@@ -128,18 +128,18 @@ void check_disk_change(int dev)
 	invalidate_buffers(dev);
 }
 
-#define _hashfn(dev,block) (((unsigned)(dev^block))%NR_HASH)
-#define hash(dev,block) hash_table[_hashfn(dev,block)]
+#define _hashfn(dev, block) (((unsigned)(dev^block)) % NR_HASH)
+#define hash(dev, block) hash_table[_hashfn(dev, block)]
 
-static inline void remove_from_queues(struct buffer_head * bh)
+static inline void remove_from_queues(struct buffer_head *bh)
 {
 /* remove from hash-queue */
 	if (bh->b_next)
 		bh->b_next->b_prev = bh->b_prev;
 	if (bh->b_prev)
 		bh->b_prev->b_next = bh->b_next;
-	if (hash(bh->b_dev,bh->b_blocknr) == bh)
-		hash(bh->b_dev,bh->b_blocknr) = bh->b_next;
+	if (hash(bh->b_dev, bh->b_blocknr) == bh)
+		hash(bh->b_dev, bh->b_blocknr) = bh->b_next;
 /* remove from free list */
 	if (!(bh->b_prev_free) || !(bh->b_next_free))
 		panic("Free block list corrupted");
@@ -149,7 +149,7 @@ static inline void remove_from_queues(struct buffer_head * bh)
 		free_list = bh->b_next_free;
 }
 
-static inline void insert_into_queues(struct buffer_head * bh)
+static inline void insert_into_queues(struct buffer_head *bh)
 {
 /* put at end of free list */
 	bh->b_next_free = free_list;
@@ -161,17 +161,17 @@ static inline void insert_into_queues(struct buffer_head * bh)
 	bh->b_next = NULL;
 	if (!bh->b_dev)
 		return;
-	bh->b_next = hash(bh->b_dev,bh->b_blocknr);
-	hash(bh->b_dev,bh->b_blocknr) = bh;
+	bh->b_next = hash(bh->b_dev, bh->b_blocknr);
+	hash(bh->b_dev, bh->b_blocknr) = bh;
 	bh->b_next->b_prev = bh;
 }
 
-static struct buffer_head * find_buffer(int dev, int block)
+static struct buffer_head *find_buffer(int dev, int block)
 {		
-	struct buffer_head * tmp;
+	struct buffer_head *tmp;
 
-	for (tmp = hash(dev,block) ; tmp != NULL ; tmp = tmp->b_next)
-		if (tmp->b_dev==dev && tmp->b_blocknr==block)
+	for (tmp = hash(dev, block); tmp != NULL; tmp = tmp->b_next)
+		if (tmp->b_dev == dev && tmp->b_blocknr == block)
 			return tmp;
 	return NULL;
 }
@@ -183,12 +183,12 @@ static struct buffer_head * find_buffer(int dev, int block)
  * will force it bad). This shouldn't really happen currently, but
  * the code is ready.
  */
-struct buffer_head * get_hash_table(int dev, int block)
+struct buffer_head *get_hash_table(int dev, int block)
 {
-	struct buffer_head * bh;
+	struct buffer_head *bh;
 
 	for (;;) {
-		if (!(bh=find_buffer(dev,block)))
+		if (!(bh = find_buffer(dev, block)))
 			return NULL;
 		bh->b_count++;
 		wait_on_buffer(bh);
@@ -205,20 +205,20 @@ struct buffer_head * get_hash_table(int dev, int block)
  *
  * The algoritm is changed: hopefully better, and an elusive bug removed.
  */
-#define BADNESS(bh) (((bh)->b_dirt<<1)+(bh)->b_lock)
-struct buffer_head * getblk(int dev,int block)
+#define BADNESS(bh) (((bh)->b_dirt << 1) + (bh)->b_lock)
+struct buffer_head *getblk(int dev, int block)
 {
-	struct buffer_head * tmp, * bh;
+	struct buffer_head *tmp, *bh;
 
 repeat:
-	bh = get_hash_table(dev,block);
+	bh = get_hash_table(dev, block);
 	if (bh)
 		return bh;
 	tmp = free_list;
 	do {
 		if (tmp->b_count)
 			continue;
-		if (!bh || BADNESS(tmp)<BADNESS(bh)) {
+		if (!bh || BADNESS(tmp) < BADNESS(bh)) {
 			bh = tmp;
 			if (!BADNESS(tmp))
 				break;
@@ -240,13 +240,13 @@ repeat:
 	}
 /* NOTE!! While we slept waiting for this block, somebody else might */
 /* already have added "this" block to the cache. check it */
-	if (find_buffer(dev,block))
+	if (find_buffer(dev, block))
 		goto repeat;
 /* OK, FINALLY we know that this buffer is the only one of it's kind, */
 /* and that it's unused (b_count=0), unlocked (b_lock=0), and clean */
-	bh->b_count=1;
-	bh->b_dirt=0;
-	bh->b_uptodate=0;
+	bh->b_count = 1;
+	bh->b_dirt = 0;
+	bh->b_uptodate = 0;
 	remove_from_queues(bh);
 	bh->b_dev=dev;
 	bh->b_blocknr=block;
@@ -254,7 +254,7 @@ repeat:
 	return bh;
 }
 
-void brelse(struct buffer_head * buf)
+void brelse(struct buffer_head *buf)
 {
 	if (!buf)
 		return;
@@ -268,15 +268,15 @@ void brelse(struct buffer_head * buf)
  * bread() reads a specified block and returns the buffer that contains
  * it. It returns NULL if the block was unreadable.
  */
-struct buffer_head * bread(int dev,int block)
+struct buffer_head *bread(int dev, int block)
 {
-	struct buffer_head * bh;
+	struct buffer_head *bh;
 
-	if (!(bh=getblk(dev,block)))
+	if (!(bh = getblk(dev, block)))
 		panic("bread: getblk returned NULL\n");
 	if (bh->b_uptodate)
 		return bh;
-	ll_rw_block(READ,bh);
+	ll_rw_block(READ, bh);
 	wait_on_buffer(bh);
 	if (bh->b_uptodate)
 		return bh;
@@ -324,21 +324,21 @@ void bread_page(unsigned long address,int dev,int b[4])
  * blocks for reading as well. End the argument list with a negative
  * number.
  */
-struct buffer_head * breada(int dev,int first, ...)
+struct buffer_head *breada(int dev, int first, ...)
 {
 	va_list args;
-	struct buffer_head * bh, *tmp;
+	struct buffer_head *bh, *tmp;
 
-	va_start(args,first);
-	if (!(bh=getblk(dev,first)))
+	va_start(args, first);
+	if (!(bh = getblk(dev, first)))
 		panic("bread: getblk returned NULL\n");
 	if (!bh->b_uptodate)
-		ll_rw_block(READ,bh);
-	while ((first=va_arg(args,int))>=0) {
-		tmp=getblk(dev,first);
+		ll_rw_block(READ, bh);
+	while ((first = va_arg(args, int)) >= 0) {
+		tmp = getblk(dev, first);
 		if (tmp) {
 			if (!tmp->b_uptodate)
-				ll_rw_block(READA,bh);
+				ll_rw_block(READA, bh);
 			tmp->b_count--;
 		}
 	}

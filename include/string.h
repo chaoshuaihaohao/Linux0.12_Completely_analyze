@@ -260,7 +260,7 @@ __asm__("cld\n\t" \
 return __res;
 }
 
-static inline int strlen(const char * s)
+static inline int strlen(const char *s)
 {
 register int __res __asm__("cx");
 __asm__("cld\n\t"
@@ -272,11 +272,11 @@ __asm__("cld\n\t"
 return __res;
 }
 
-static char * ___strtok;
+static char *___strtok;
 
-static inline char * strtok(char * s,const char * ct)
+static inline char * strtok(char *s, const char *ct)
 {
-register char * __res __asm__("si");
+register char *__res __asm__("si");
 __asm__("testl %1,%1\n\t"
 	"jne 1f\n\t"
 	"testl %0,%0\n\t"
@@ -333,7 +333,7 @@ __asm__("testl %1,%1\n\t"
 return __res;
 }
 
-static inline void * memcpy(void * dest,const void * src, int n)
+static inline void * memcpy(void *dest, const void *src, int n)
 {
 __asm__("cld\n\t"
 	"rep\n\t"
@@ -343,9 +343,9 @@ __asm__("cld\n\t"
 return dest;
 }
 
-static inline void * memmove(void * dest,const void * src, int n)
+static inline void * memmove(void *dest, const void *src, int n)
 {
-if (dest<src)
+if (dest < src)
 __asm__("cld\n\t"
 	"rep\n\t"
 	"movsb"
@@ -355,12 +355,12 @@ else
 __asm__("std\n\t"
 	"rep\n\t"
 	"movsb"
-	::"c" (n),"S" (src+n-1),"D" (dest+n-1)
+	::"c" (n),"S" (src + n - 1),"D" (dest + n - 1)
 	:);
 return dest;
 }
 
-static inline int memcmp(const void * cs,const void * ct,int count)
+static inline int memcmp(const void *cs, const void *ct, int count)
 {
 register int __res __asm__("ax");
 __asm__("cld\n\t"
@@ -376,7 +376,7 @@ __asm__("cld\n\t"
 return __res;
 }
 
-static inline void * memchr(const void * cs,char c,int count)
+static inline void * memchr(const void *cs, char c, int count)
 {
 register void * __res __asm__("di");
 if (!count)
@@ -392,7 +392,7 @@ __asm__("cld\n\t"
 return __res;
 }
 
-static inline void * memset(void * s,char c,int count)
+static inline void *memset(void *s, char c, int count)
 {
 __asm__("cld\n\t"
 	"rep\n\t"

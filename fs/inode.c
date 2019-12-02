@@ -45,10 +45,10 @@ static inline void unlock_inode(struct m_inode * inode)
 void invalidate_inodes(int dev)
 {
 	int i;
-	struct m_inode * inode;
+	struct m_inode *inode;
 
-	inode = 0+inode_table;
-	for(i=0 ; i<NR_INODE ; i++,inode++) {
+	inode = 0 + inode_table;
+	for(i = 0; i < NR_INODE; i++, inode++) {
 		wait_on_inode(inode);
 		if (inode->i_dev == dev) {
 			if (inode->i_count)

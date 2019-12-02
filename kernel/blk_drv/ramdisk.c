@@ -71,24 +71,23 @@ long rd_init(long mem_start, int length)
 void rd_load(void)
 {
 	struct buffer_head *bh;
-	struct super_block	s;
-	int		block = 256;	/* Start at block 256 */
-	int		i = 1;
-	int		nblocks;
-	char		*cp;		/* Move pointer */
+	struct super_block s;
+	int block = 256;	/* Start at block 256 */
+	int i = 1;
+	int nblocks;
+	char *cp;		/* Move pointer */
 	
 	if (!rd_length)
 		return;
-	printk("Ram disk: %d bytes, starting at 0x%x\n", rd_length,
-		(int) rd_start);
+	printk("Ram disk: %d bytes, starting at 0x%x\n", rd_length, (int) rd_start);
 	if (MAJOR(ROOT_DEV) != 2)
 		return;
-	bh = breada(ROOT_DEV,block+1,block,block+2,-1);
+	bh = breada(ROOT_DEV, block + 1, block, block + 2, -1);
 	if (!bh) {
 		printk("Disk error while looking for ramdisk!\n");
 		return;
 	}
-	*((struct d_super_block *) &s) = *((struct d_super_block *) bh->b_data);
+	*((struct d_super_block *)&s) = *((struct d_super_block *)bh->b_data);
 	brelse(bh);
 	if (s.s_magic != SUPER_MAGIC)
 		/* No ram disk image present, assume normal floppy boot */
@@ -104,7 +103,7 @@ void rd_load(void)
 	cp = rd_start;
 	while (nblocks) {
 		if (nblocks > 2) 
-			bh = breada(ROOT_DEV, block, block+1, block+2, -1);
+			bh = breada(ROOT_DEV, block, block + 1, block + 2, -1);
 		else
 			bh = bread(ROOT_DEV, block);
 		if (!bh) {
@@ -112,14 +111,14 @@ void rd_load(void)
 				block);
 			return;
 		}
-		(void) memcpy(cp, bh->b_data, BLOCK_SIZE);
+		(void)memcpy(cp, bh->b_data, BLOCK_SIZE);
 		brelse(bh);
-		printk("\010\010\010\010\010%4dk",i);
+		printk("\010\010\010\010\010%4dk", i);
 		cp += BLOCK_SIZE;
 		block++;
 		nblocks--;
 		i++;
 	}
 	printk("\010\010\010\010\010done \n");
-	ROOT_DEV=0x0101;
+	ROOT_DEV = 0x0101;
 }

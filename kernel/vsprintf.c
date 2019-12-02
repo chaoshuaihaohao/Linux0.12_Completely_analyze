@@ -37,7 +37,7 @@ int __res; \
 __asm__("divl %4":"=a" (n),"=d" (__res):"0" (n),"1" (0),"r" (base)); \
 __res; })
 
-static char *number(char * str, int num, int base, int size, int precision,
+static char *number(char *str, int num, int base, int size, int precision,
 		    int type)
 {
 	char c, sign, tmp[36];
@@ -73,15 +73,15 @@ static char *number(char * str, int num, int base, int size, int precision,
 	if (i > precision)
 		precision=i;
 	size -= precision;
-	if (!(type&(ZEROPAD+LEFT)))
+	if (!(type & (ZEROPAD + LEFT)))
 		while(size-->0)
 			*str++ = ' ';
 	if (sign)
 		*str++ = sign;
 	if (type & SPECIAL) {
-		if (base==8)
+		if (base == 8)
 			*str++ = '0';
-		else if (base==16) {
+		else if (base == 16) {
 			*str++ = '0';
 			*str++ = digits[33];
 		}

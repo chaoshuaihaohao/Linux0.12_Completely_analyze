@@ -14,7 +14,7 @@
 __asm__("cld\n\t" \
 	"rep\n\t" \
 	"stosl" \
-	::"a" (0),"c" (BLOCK_SIZE/4),"D" ((long) (addr)):)
+	::"a" (0),"c" (BLOCK_SIZE/4),"D" ((long)(addr)):)
 
 #define set_bit(nr,addr) ({\
 register int res __asm__("ax"); \
@@ -46,27 +46,27 @@ __res;})
 
 int free_block(int dev, int block)
 {
-	struct super_block * sb;
-	struct buffer_head * bh;
+	struct super_block *sb;
+	struct buffer_head *bh;
 
 	if (!(sb = get_super(dev)))
 		panic("trying to free block on nonexistent device");
 	if (block < sb->s_firstdatazone || block >= sb->s_nzones)
 		panic("trying to free block not in datazone");
-	bh = get_hash_table(dev,block);
+	bh = get_hash_table(dev, block);
 	if (bh) {
 		if (bh->b_count > 1) {
 			brelse(bh);
 			return 0;
 		}
-		bh->b_dirt=0;
-		bh->b_uptodate=0;
+		bh->b_dirt = 0;
+		bh->b_uptodate = 0;
 		if (bh->b_count)
 			brelse(bh);
 	}
 	block -= sb->s_firstdatazone - 1 ;
-	if (clear_bit(block&8191,sb->s_zmap[block/8192]->b_data)) {
-		printk("block (%04x:%d) ",dev,block+sb->s_firstdatazone-1);
+	if (clear_bit(block & 8191, sb->s_zmap[block/8192]->b_data)) {
+		printk("block (%04x:%d) ", dev, block + sb->s_firstdatazone - 1);
 		printk("free_block: bit already cleared\n");
 	}
 	sb->s_zmap[block/8192]->b_dirt = 1;
@@ -75,9 +75,9 @@ int free_block(int dev, int block)
 
 int new_block(int dev)
 {
-	struct buffer_head * bh;
-	struct super_block * sb;
-	int i,j;
+	struct buffer_head *bh;
+	struct super_block *sb;
+	int i, j;
 
 	if (!(sb = get_super(dev)))
 		panic("trying to get new block from nonexistant device");
@@ -85,7 +85,7 @@ int new_block(int dev)
 	for (i = 0; i < 8; i++) {
 		bh = sb->s_zmap[i];
 		if (bh) {
-			j=find_first_zero(bh->b_data);
+			j = find_first_zero(bh->b_data);
 			if (j < 8192)
 				break;
 		}
@@ -95,10 +95,11 @@ int new_block(int dev)
 	if (set_bit(j, bh->b_data))
 		panic("new_block: bit already set");
 	bh->b_dirt = 1;
-	j += i*8192 + sb->s_firstdatazone-1;
+	j += i * 8192 + sb->s_firstdatazone - 1;
 	if (j >= sb->s_nzones)
 		return 0;
-	if (!(bh=getblk(dev,j)))
+	bh = getblk(dev,j);
+	if (!bh)
 		panic("new_block: cannot get block");
 	if (bh->b_count != 1)
 		panic("new block: count is != 1");
@@ -109,19 +110,19 @@ int new_block(int dev)
 	return j;
 }
 
-void free_inode(struct m_inode * inode)
+void free_inode(struct m_inode *inode)
 {
-	struct super_block * sb;
-	struct buffer_head * bh;
+	struct super_block *sb;
+	struct buffer_head *bh;
 
 	if (!inode)
 		return;
 	if (!inode->i_dev) {
-		memset(inode,0,sizeof(*inode));
+		memset(inode, 0, sizeof(*inode));
 		return;
 	}
-	if (inode->i_count>1) {
-		printk("trying to free inode with count=%d\n",inode->i_count);
+	if (inode->i_count > 1) {
+		printk("trying to free inode with count=%d\n", inode->i_count);
 		panic("free_inode");
 	}
 	if (inode->i_nlinks)
@@ -130,15 +131,15 @@ void free_inode(struct m_inode * inode)
 		panic("trying to free inode on nonexistent device");
 	if (inode->i_num < 1 || inode->i_num > sb->s_ninodes)
 		panic("trying to free inode 0 or nonexistant inode");
-	if (!(bh=sb->s_imap[inode->i_num>>13]))
+	if (!(bh = sb->s_imap[inode->i_num >> 13]))
 		panic("nonexistent imap in superblock");
-	if (clear_bit(inode->i_num&8191,bh->b_data))
+	if (clear_bit(inode->i_num & 8191, bh->b_data))
 		printk("free_inode: bit already cleared.\n\r");
 	bh->b_dirt = 1;
-	memset(inode,0,sizeof(*inode));
+	memset(inode, 0, sizeof(*inode));
 }
 
-struct m_inode * new_inode(int dev)
+struct m_inode *new_inode(int dev)
 {
 	struct m_inode * inode;
 	struct super_block * sb;
