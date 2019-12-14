@@ -15,4 +15,8 @@ typedef unsigned long size_t;
 #define NULL ((void *)0)
 
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+
+#define KB (1 << 10)	/* 1024;0x400 */
+#define MB (1 << 20)	/* 1024 * 1024;0x100000 */
+
 #endif

@@ -154,12 +154,12 @@ struct task_struct {
 /* file system info */
 	int tty;		/* -1 if no tty, so it must be signed */
 	unsigned short umask;
-	struct m_inode * pwd;
-	struct m_inode * root;
-	struct m_inode * executable;
-	struct m_inode * library;
+	struct m_inode *pwd;
+	struct m_inode *root;
+	struct m_inode *executable;
+	struct m_inode *library;
 	unsigned long close_on_exec;
-	struct file * filp[NR_OPEN];
+	struct file *filp[NR_OPEN];
 /* ldt for this task 0 - zero 1 - cs 2 - ds&ss */
 	struct desc_struct ldt[3];
 /* tss for this task */
@@ -177,30 +177,30 @@ struct task_struct {
  * your own risk!. Base=0, limit=0x9ffff (=640kB)
  */
 #define INIT_TASK \
-/* state etc */	{ 0,15,15, \
-/* signals */	0,{{},},0, \
-/* ec,brk... */	0,0,0,0,0,0, \
-/* pid etc.. */	0,0,0,0, \
+/* state etc */	{ 0, 15, 15, \
+/* signals */	0, {{},}, 0, \
+/* ec,brk... */	0, 0, 0, 0, 0, 0, \
+/* pid etc.. */	0, 0, 0, 0, \
 /* suppl grps*/ {NOGROUP,}, \
-/* proc links*/ &init_task.task,0,0,0, \
-/* uid etc */	0,0,0,0,0,0, \
-/* timeout */	0,0,0,0,0,0,0, \
+/* proc links*/ &init_task.task, 0, 0, 0, \
+/* uid etc */	0, 0, 0, 0, 0, 0, \
+/* timeout */	0, 0, 0, 0, 0, 0, 0, \
 /* rlimits */   { {0x7fffffff, 0x7fffffff}, {0x7fffffff, 0x7fffffff},  \
 		  {0x7fffffff, 0x7fffffff}, {0x7fffffff, 0x7fffffff}, \
 		  {0x7fffffff, 0x7fffffff}, {0x7fffffff, 0x7fffffff}}, \
 /* flags */	0, \
 /* math */	0, \
-/* fs info */	-1,0022,NULL,NULL,NULL,NULL,0, \
+/* fs info */	-1, 0022, NULL, NULL, NULL, NULL, 0, \
 /* filp */	{NULL,}, \
 	{ \
-		{0,0}, \
-/* ldt */	{0x9f,0xc0fa00}, \
-		{0x9f,0xc0f200}, \
+		{0, 0}, \
+/* ldt */	{0x9f, 0xc0fa00}, \
+		{0x9f, 0xc0f200}, \
 	}, \
-/*tss*/	{0,PAGE_SIZE+(long)&init_task,0x10,0,0,0,0,(long)&pg_dir,\
-	 0,0,0,0,0,0,0,0, \
-	 0,0,0x17,0x17,0x17,0x17,0x17,0x17, \
-	 _LDT(0),0x80000000, \
+/*tss*/	{0, PAGE_SIZE + (long)&init_task, 0x10, 0, 0, 0, 0, (long)&pg_dir,\
+	 0, 0, 0, 0, 0, 0, 0, 0, \
+	 0, 0, 0x17, 0x17, 0x17, 0x17, 0x17, 0x17, \
+	 _LDT(0), 0x80000000, \
 		{} \
 	}, \
 }
@@ -225,9 +225,9 @@ extern int in_group_p(gid_t grp);
  * 4-TSS0, 5-LDT0, 6-TSS1 etc ...
  */
 #define FIRST_TSS_ENTRY 4
-#define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
-#define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
-#define _LDT(n) ((((unsigned long) n)<<4)+(FIRST_LDT_ENTRY<<3))
+#define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY + 1)
+#define _TSS(n) ((((unsigned long)n) << 4) + (FIRST_TSS_ENTRY << 3))
+#define _LDT(n) ((((unsigned long)n) << 4) + (FIRST_LDT_ENTRY << 3))
 #define ltr(n)	__asm__("ltr %%ax"::"a" (_TSS(n)))
 #define lldt(n)	__asm__("lldt %%ax"::"a" (_LDT(n)))
 #define str(n) \
@@ -235,7 +235,7 @@ __asm__("str %%ax\n\t" \
 	"subl %2,%%eax\n\t" \
 	"shrl $4,%%eax" \
 	:"=a" (n) \
-	:"a" (0),"i" (FIRST_TSS_ENTRY<<3))
+	:"a" (0),"i" (FIRST_TSS_ENTRY << 3))
 /*
  *	switch_to(n) should switch tasks to task nr n, first
  * checking that n isn't the current task, in which case it does nothing.
@@ -243,7 +243,7 @@ __asm__("str %%ax\n\t" \
  * tha math co-processor latest.
  */
 #define switch_to(n) {\
-struct {long a,b;} __tmp; \
+struct {long a, b;} __tmp; \
 __asm__("cmpl %%ecx,current\n\t" \
 	"je 1f\n\t" \
 	"movw %%dx,%1\n\t" \

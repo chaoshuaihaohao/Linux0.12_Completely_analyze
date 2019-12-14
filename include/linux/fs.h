@@ -71,18 +71,18 @@ void buffer_init(long buffer_end);
 typedef char buffer_block[BLOCK_SIZE];
 
 struct buffer_head {
-	char * b_data;			/* pointer to data block (1024 bytes) */
+	char *b_data;			/* pointer to data block (1024 bytes) */
 	unsigned long b_blocknr;	/* block number */
 	unsigned short b_dev;		/* device (0 = free) */
 	unsigned char b_uptodate;
 	unsigned char b_dirt;		/* 0-clean,1-dirty */
 	unsigned char b_count;		/* users using this block */
-	unsigned char b_lock;		/* 0 - ok, 1 -locked */
-	struct task_struct * b_wait;
-	struct buffer_head * b_prev;
-	struct buffer_head * b_next;
-	struct buffer_head * b_prev_free;
-	struct buffer_head * b_next_free;
+	unsigned char b_lock;		/* 0 - ok, 1 - locked */
+	struct task_struct *b_wait;
+	struct buffer_head *b_prev;
+	struct buffer_head *b_next;
+	struct buffer_head *b_prev_free;
+	struct buffer_head *b_next_free;
 };
 
 struct d_inode {
@@ -104,8 +104,8 @@ struct m_inode {
 	unsigned char i_nlinks;
 	unsigned short i_zone[9];
 /* these are in memory also */
-	struct task_struct * i_wait;
-	struct task_struct * i_wait2;	/* for pipes */
+	struct task_struct *i_wait;
+	struct task_struct *i_wait2;	/* for pipes */
 	unsigned long i_atime;
 	unsigned long i_ctime;
 	unsigned short i_dev;

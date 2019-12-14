@@ -94,12 +94,12 @@ struct exec {
 
 #define _N_SEGMENT_ROUND(x) (((x) + SEGMENT_SIZE - 1) & ~(SEGMENT_SIZE - 1))
 
-#define _N_TXTENDADDR(x) (N_TXTADDR(x)+(x).a_text)
+#define _N_TXTENDADDR(x) (N_TXTADDR(x) + (x).a_text)
 
 #ifndef N_DATADDR
 #define N_DATADDR(x) \
-    (N_MAGIC(x)==OMAGIC? (_N_TXTENDADDR(x)) \
-     : (_N_SEGMENT_ROUND (_N_TXTENDADDR(x))))
+	(N_MAGIC(x) == OMAGIC? (_N_TXTENDADDR(x)) \
+	: (_N_SEGMENT_ROUND (_N_TXTENDADDR(x))))
 #endif
 
 /* Address of bss segment in memory after it is loaded.  */
@@ -215,6 +215,5 @@ struct relocation_info
   unsigned int r_pad:4;
 };
 #endif /* no N_RELOCATION_INFO_DECLARED.  */
-
 
 #endif /* __A_OUT_GNU_H__ */

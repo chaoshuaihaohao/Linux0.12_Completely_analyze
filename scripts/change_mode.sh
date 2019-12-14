@@ -1,6 +1,6 @@
 #!/bin/sh
 cd ../
-chmod 644 *.c *.h *.s *.S Makefile bochsrc.txt -f
+chmod 644 *.c *.h *.s *.S Makefile bochsrc.txt README.sh a.img -f
 
 cd boot/
 chmod 644 *.c *.h *.s *.S Makefile bochsrc.txt -f

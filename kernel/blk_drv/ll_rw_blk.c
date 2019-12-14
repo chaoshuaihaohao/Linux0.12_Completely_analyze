@@ -23,7 +23,7 @@ struct request request[NR_REQUEST];
 /*
  * used to wait on when there are no free requests
  */
-struct task_struct * wait_for_request = NULL;
+struct task_struct *wait_for_request = NULL;
 
 /* blk_dev_struct is:
  *	do_request-address
@@ -48,7 +48,7 @@ struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
  */
 int *blk_size[NR_BLK_DEV] = { NULL, NULL, };
 
-static inline void lock_buffer(struct buffer_head * bh)
+static inline void lock_buffer(struct buffer_head *bh)
 {
 	cli();
 	while (bh->b_lock)
@@ -73,9 +73,9 @@ static inline void unlock_buffer(struct buffer_head * bh)
  * Note that swapping requests always go before other requests,
  * and are done in the order they appear.
  */
-static void add_request(struct blk_dev_struct * dev, struct request * req)
+static void add_request(struct blk_dev_struct *dev, struct request *req)
 {
-	struct request * tmp;
+	struct request *tmp;
 
 	req->next = NULL;
 	cli();
@@ -87,25 +87,24 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
 		(dev->request_fn)();
 		return;
 	}
-	for ( ; tmp->next ; tmp=tmp->next) {
+	for ( ; tmp->next; tmp=tmp->next) {
 		if (!req->bh)
 			if (tmp->next->bh)
 				break;
 			else
 				continue;
-		if ((IN_ORDER(tmp,req) ||
-		    !IN_ORDER(tmp,tmp->next)) &&
-		    IN_ORDER(req,tmp->next))
+		if ((IN_ORDER(tmp, req) || !IN_ORDER(tmp, tmp->next)) &&
+		    IN_ORDER(req, tmp->next))
 			break;
 	}
-	req->next=tmp->next;
-	tmp->next=req;
+	req->next = tmp->next;
+	tmp->next = req;
 	sti();
 }
 
-static void make_request(int major,int rw, struct buffer_head * bh)
+static void make_request(int major, int rw, struct buffer_head *bh)
 {
-	struct request * req;
+	struct request *req;
 	int rw_ahead;
 
 /* WRITEA/READA is special case - it is not really needed, so if the */
@@ -119,7 +118,7 @@ static void make_request(int major,int rw, struct buffer_head * bh)
 		else
 			rw = WRITE;
 	}
-	if (rw!=READ && rw!=WRITE)
+	if (rw != READ && rw != WRITE)
 		panic("Bad block dev command, must be R/W/RA/WA");
 	lock_buffer(bh);
 	if ((rw == WRITE && !bh->b_dirt) || (rw == READ && bh->b_uptodate)) {
@@ -132,9 +131,9 @@ repeat:
  * of the requests are only for reads.
  */
 	if (rw == READ)
-		req = request+NR_REQUEST;
+		req = request + NR_REQUEST;
 	else
-		req = request+((NR_REQUEST*2)/3);
+		req = request + ((NR_REQUEST * 2) / 3);
 /* find an empty request */
 	while (--req >= request)
 		if (req->dev<0)
@@ -151,29 +150,29 @@ repeat:
 /* fill up the request-info, and add it to the queue */
 	req->dev = bh->b_dev;
 	req->cmd = rw;
-	req->errors=0;
-	req->sector = bh->b_blocknr<<1;
+	req->errors = 0;
+	req->sector = bh->b_blocknr << 1;
 	req->nr_sectors = 2;
 	req->buffer = bh->b_data;
 	req->waiting = NULL;
 	req->bh = bh;
 	req->next = NULL;
-	add_request(major+blk_dev,req);
+	add_request(major + blk_dev, req);
 }
 
 void ll_rw_page(int rw, int dev, int page, char * buffer)
 {
-	struct request * req;
+	struct request *req;
 	unsigned int major = MAJOR(dev);
 
 	if (major >= NR_BLK_DEV || !(blk_dev[major].request_fn)) {
 		printk("Trying to read nonexistent block-device\n\r");
 		return;
 	}
-	if (rw!=READ && rw!=WRITE)
+	if (rw != READ && rw != WRITE)
 		panic("Bad block dev command, must be R/W");
 repeat:
-	req = request+NR_REQUEST;
+	req = request + NR_REQUEST;
 	while (--req >= request)
 		if (req->dev<0)
 			break;
@@ -196,16 +195,16 @@ repeat:
 	schedule();
 }	
 
-void ll_rw_block(int rw, struct buffer_head * bh)
+void ll_rw_block(int rw, struct buffer_head *bh)
 {
 	unsigned int major;
 
-	if ((major=MAJOR(bh->b_dev)) >= NR_BLK_DEV ||
+	if ((major = MAJOR(bh->b_dev)) >= NR_BLK_DEV ||
 	!(blk_dev[major].request_fn)) {
 		printk("Trying to read nonexistent block-device\n\r");
 		return;
 	}
-	make_request(major,rw,bh);
+	make_request(major, rw, bh);
 }
 
 void blk_dev_init(void)

@@ -23,11 +23,11 @@ struct tm {
 	int tm_sec;
 	int tm_min;
 	int tm_hour;
-	int tm_mday;
-	int tm_mon;
-	int tm_year;
-	int tm_wday;
-	int tm_yday;
+	int tm_mday;	/* The number of day in one month(0~31) */
+	int tm_mon;	/* The month in one year(0~11) */
+	int tm_year;	/* The year since 1900 */
+	int tm_wday;	/* one day of the week(0~6), sunday is 0 */
+	int tm_yday;	/* one day of the year(0~365) */
 	int tm_isdst;
 };
 

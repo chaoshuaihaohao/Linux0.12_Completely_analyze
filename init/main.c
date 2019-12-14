@@ -129,9 +129,6 @@ struct drive_info {
 	char dummy[32];
 } drive_info;
 
-#define KB (1 << 10)	/* 1024;0x400 */
-#define MB (1 << 20)	/* 1024 * 1024;0x100000 */
-
 /*
  * The memory partition of system
  *

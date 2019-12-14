@@ -19,7 +19,8 @@
  */
 
 #include <stdarg.h>
- 
+#include <stddef.h>
+
 #include <linux/config.h>
 #include <linux/sched.h>
 #include <linux/kernel.h>
@@ -30,10 +31,10 @@ extern int end;
 extern void invalidate_inodes(int dev);
 extern void put_super(int dev);
 
-struct buffer_head * start_buffer = (struct buffer_head *) &end;
-struct buffer_head * hash_table[NR_HASH];
-static struct buffer_head * free_list;
-static struct task_struct * buffer_wait = NULL;
+struct buffer_head *start_buffer = (struct buffer_head *)&end;
+struct buffer_head *hash_table[NR_HASH];
+static struct buffer_head *free_list;
+static struct task_struct *buffer_wait = NULL;
 int NR_BUFFERS = 0;
 
 static inline void wait_on_buffer(struct buffer_head *bh)
@@ -47,14 +48,14 @@ static inline void wait_on_buffer(struct buffer_head *bh)
 int sys_sync(void)
 {
 	int i;
-	struct buffer_head * bh;
+	struct buffer_head *bh;
 
 	sync_inodes();		/* write out inodes into buffers */
 	bh = start_buffer;
-	for (i=0 ; i<NR_BUFFERS ; i++,bh++) {
+	for (i = 0; i < NR_BUFFERS; i++, bh++) {
 		wait_on_buffer(bh);
 		if (bh->b_dirt)
-			ll_rw_block(WRITE,bh);
+			ll_rw_block(WRITE, bh);
 	}
 	return 0;
 }
@@ -62,10 +63,10 @@ int sys_sync(void)
 int sync_dev(int dev)
 {
 	int i;
-	struct buffer_head * bh;
+	struct buffer_head *bh;
 
 	bh = start_buffer;
-	for (i=0 ; i<NR_BUFFERS ; i++,bh++) {
+	for (i=0 ; i < NR_BUFFERS; i++, bh++) {
 		if (bh->b_dev != dev)
 			continue;
 		wait_on_buffer(bh);
@@ -121,7 +122,7 @@ void check_disk_change(int dev)
 		return;
 	if (!floppy_change(dev & 0x03))
 		return;
-	for (i=0 ; i< NR_SUPER; i++)
+	for (i=0 ; i < NR_SUPER; i++)
 		if (super_block[i].s_dev == dev)
 			put_super(super_block[i].s_dev);
 	invalidate_inodes(dev);
@@ -356,8 +357,8 @@ void buffer_init(long buffer_end)
 	void *b;
 	int i;
 
-	if (buffer_end == 1 << 20)
-		b = (void *)(640 * 1024);
+	if (buffer_end == MB)
+		b = (void *)(640 * KB);
 	else
 		b = (void *)buffer_end;
 	while ((b -= BLOCK_SIZE) >= ((void *)(h + 1))) {

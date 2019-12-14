@@ -52,7 +52,7 @@ void show_state(void)
 			show_task(i,task[i]);
 }
 
-#define LATCH (1193180/HZ)
+#define LATCH (1193180 / HZ)
 
 extern void mem_use(void);
 
@@ -70,6 +70,7 @@ unsigned long volatile jiffies = 0;
 
 /* The time of start the PC */
 unsigned long startup_time = 0;
+
 int jiffies_offset = 0;		/* # clock ticks to add to get "true
 				   time".  Should always be less than
 				   1 second's worth.  For time fanatics
@@ -79,14 +80,14 @@ int jiffies_offset = 0;		/* # clock ticks to add to get "true
 struct task_struct *current = &(init_task.task);
 struct task_struct *last_task_used_math = NULL;
 
-struct task_struct * task[NR_TASKS] = {&(init_task.task), };
+struct task_struct *task[NR_TASKS] = {&(init_task.task), };
 
-long user_stack [ PAGE_SIZE>>2 ] ;
+long user_stack [ PAGE_SIZE >> 2 ] ;
 
 struct {
-	long * a;
+	long *a;
 	short b;
-	} stack_start = { & user_stack [PAGE_SIZE>>2] , 0x10 };
+} stack_start = { & user_stack [PAGE_SIZE>>2] , 0x10 };
 /*
  *  'math_state_restore()' saves the current math information in the
  * old math state array, and gets the new ones from the current task
@@ -211,7 +212,7 @@ void wake_up(struct task_struct **p)
 			printk("wake_up: TASK_STOPPED");
 		if ((**p).state == TASK_ZOMBIE)
 			printk("wake_up: TASK_ZOMBIE");
-		(**p).state=0;
+		(**p).state = 0;
 	}
 }
 
@@ -438,7 +439,7 @@ void sched_init(void)
 	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
 	ltr(0);
 	lldt(0);
-	outb_p(0x36,0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
+	outb_p(0x36, 0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
 	outb_p(LATCH & 0xff , 0x40);	/* LSB */
 	outb(LATCH >> 8 , 0x40);	/* MSB */
 	set_intr_gate(0x20, &timer_interrupt);

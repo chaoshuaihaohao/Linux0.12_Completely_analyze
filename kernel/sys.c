@@ -322,7 +322,7 @@ int sys_setgroups(int gidsetsize, gid_t *grouplist)
 
 int in_group_p(gid_t grp)
 {
-	int	i;
+	int i;
 
 	if (grp == current->egid)
 		return 1;

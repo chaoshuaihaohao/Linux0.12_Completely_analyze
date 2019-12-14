@@ -69,7 +69,7 @@ int free_block(int dev, int block)
 		printk("block (%04x:%d) ", dev, block + sb->s_firstdatazone - 1);
 		printk("free_block: bit already cleared\n");
 	}
-	sb->s_zmap[block/8192]->b_dirt = 1;
+	sb->s_zmap[block / 8192]->b_dirt = 1;
 	return 1;
 }
 
@@ -79,7 +79,8 @@ int new_block(int dev)
 	struct super_block *sb;
 	int i, j;
 
-	if (!(sb = get_super(dev)))
+	sb = get_super(dev);
+	if (!sb)
 		panic("trying to get new block from nonexistant device");
 	j = 8192;
 	for (i = 0; i < 8; i++) {
@@ -98,7 +99,7 @@ int new_block(int dev)
 	j += i * 8192 + sb->s_firstdatazone - 1;
 	if (j >= sb->s_nzones)
 		return 0;
-	bh = getblk(dev,j);
+	bh = getblk(dev, j);
 	if (!bh)
 		panic("new_block: cannot get block");
 	if (bh->b_count != 1)
@@ -141,12 +142,12 @@ void free_inode(struct m_inode *inode)
 
 struct m_inode *new_inode(int dev)
 {
-	struct m_inode * inode;
-	struct super_block * sb;
-	struct buffer_head * bh;
-	int i,j;
+	struct m_inode *inode;
+	struct super_block *sb;
+	struct buffer_head *bh;
+	int i, j;
 
-	inode=get_empty_inode();
+	inode = get_empty_inode();
 	if (!inode)
 		return NULL;
 	sb = get_super(dev);
@@ -168,13 +169,13 @@ struct m_inode *new_inode(int dev)
 	if (set_bit(j,bh->b_data))
 		panic("new_inode: bit already set");
 	bh->b_dirt = 1;
-	inode->i_count=1;
-	inode->i_nlinks=1;
-	inode->i_dev=dev;
-	inode->i_uid=current->euid;
-	inode->i_gid=current->egid;
-	inode->i_dirt=1;
-	inode->i_num = j + i*8192;
+	inode->i_count = 1;
+	inode->i_nlinks = 1;
+	inode->i_dev = dev;
+	inode->i_uid = current->euid;
+	inode->i_gid = current->egid;
+	inode->i_dirt = 1;
+	inode->i_num = j + i * 8192;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;
 	return inode;
 }
